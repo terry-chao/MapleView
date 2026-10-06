@@ -10,6 +10,9 @@ target
 site/
 .cache/
 
+# Windows packages built by tools/package-windows.ps1
+dist/
+
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
 
