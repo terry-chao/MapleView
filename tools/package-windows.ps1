@@ -15,11 +15,18 @@
     release 包会检查 exe 的 PE 子系统必须是图形界面，防止回归出「双击先弹
     一个控制台黑框」的版本。
 
+    包里的 exe 文件名跟着系统语言走：中文环境是「枫阅.exe」，其他环境是
+    mapleview.exe，跟 crates/app/src/brand.rs 决定窗口标题的规则一致。zip
+    自己的名字始终是 ASCII，免得下载地址和脚本引用随语言变。
+
 .EXAMPLE
     pwsh tools/package-windows.ps1
 
 .EXAMPLE
     pwsh tools/package-windows.ps1 -IncludeCli -KeepStaging
+
+.EXAMPLE
+    pwsh tools/package-windows.ps1 -AppFileName mapleview.exe
 #>
 [CmdletBinding()]
 param(
@@ -35,6 +42,9 @@ param(
 
     # 保留解包前的暂存目录，方便先手动跑一下再决定要不要发。
     [switch]$KeepStaging,
+
+    # 包里的 exe 文件名。不传就按系统语言决定，中文环境用「枫阅.exe」。
+    [string]$AppFileName,
 
     [string]$OutputRoot = 'dist'
 )
@@ -96,6 +106,18 @@ try {
     $stage = Join-Path $outRoot $name
     $zip = Join-Path $outRoot "$name.zip"
 
+    # brand.rs 用 GetUserDefaultLocaleName 决定窗口标题是「枫阅」还是
+    # 「MapleView」，.NET 的 CurrentCulture 取的就是同一个值，所以照抄它的
+    # 判断，exe 名字和标题不会一个中文一个英文。
+    if (-not $AppFileName) {
+        $AppFileName = if ([Globalization.CultureInfo]::CurrentCulture.Name -like 'zh*') {
+            '枫阅.exe'
+        }
+        else {
+            'mapleview.exe'
+        }
+    }
+
     Write-Host "打包 $name（$triple，$Profile）" -ForegroundColor Cyan
 
     # --- 编译 -------------------------------------------------------------
@@ -131,7 +153,9 @@ try {
                     'release 包不该带控制台窗口，检查 crates/app/src/main.rs 的 windows_subsystem 属性'
             }
         }
-        Copy-Item -LiteralPath $from -Destination $stage
+        # app 在中文环境下换个名字，CLI 保持原名。
+        $target = if ($binary -eq 'mapleview.exe') { $AppFileName } else { $binary }
+        Copy-Item -LiteralPath $from -Destination (Join-Path $stage $target)
     }
     foreach ($doc in 'LICENSE', 'README.md') {
         $from = Join-Path $root $doc
@@ -154,7 +178,7 @@ try {
     $exeSize = Get-ChildItem -LiteralPath (Join-Path $binDir 'mapleview.exe') |
         ForEach-Object { '{0:N1} MB' -f ($_.Length / 1MB) }
     Write-Host ''
-    Write-Host "  exe      $exeSize" -ForegroundColor DarkGray
+    Write-Host "  exe      $exeSize  $AppFileName" -ForegroundColor DarkGray
     if ($Profile -eq 'release') {
         Write-Host '           图形子系统，双击不弹控制台' -ForegroundColor DarkGray
     }
