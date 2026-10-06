@@ -113,7 +113,7 @@ BEGIN
         BLOCK "080404B0"
         BEGIN
             VALUE "CompanyName", "Terry"
-            VALUE "FileDescription", "枫阅 MapleView - 图片查看器"
+            VALUE "FileDescription", "枫阅图片查看器"
             VALUE "FileVersion", "{version}"
             VALUE "InternalName", "mapleview"
             VALUE "LegalCopyright", "MIT Licensed"
