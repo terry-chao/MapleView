@@ -38,6 +38,11 @@ const ABOUT_URL: &str = "https://terry-chao.github.io/mapleview/";
 /// Author credited in the About dialog.
 const ABOUT_AUTHOR: &str = "Terry";
 
+/// The welcome page's two action buttons, and the gap between them.
+const BUTTON_W: f32 = 124.0;
+const BUTTON_H: f32 = 34.0;
+const BUTTON_GAP: f32 = 10.0;
+
 /// What the UI is currently waiting on.
 struct Request {
     generation: u64,
@@ -848,27 +853,40 @@ impl MapleView {
                         );
 
                         ui.add_space(22.0);
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing.x = 10.0;
-                            if ui
-                                .add(
-                                    egui::Button::new(egui::RichText::new("打开文件").size(15.0))
-                                        .min_size(Vec2::new(124.0, 34.0)),
-                                )
-                                .clicked()
-                            {
-                                self.pick_file(ctx);
-                            }
-                            if ui
-                                .add(
-                                    egui::Button::new(egui::RichText::new("打开文件夹").size(15.0))
-                                        .min_size(Vec2::new(124.0, 34.0)),
-                                )
-                                .clicked()
-                            {
-                                self.pick_folder(ctx);
-                            }
-                        });
+                        // `ui.horizontal` would hand the row the full card width
+                        // and leave the buttons hard against the left edge. A row
+                        // allocated at exactly the buttons' width is centred by
+                        // the surrounding `vertical_centered`.
+                        let size = Vec2::new(BUTTON_W * 2.0 + BUTTON_GAP, BUTTON_H);
+                        ui.allocate_ui_with_layout(
+                            size,
+                            egui::Layout::left_to_right(egui::Align::Center),
+                            |ui| {
+                                ui.spacing_mut().item_spacing.x = BUTTON_GAP;
+                                if ui
+                                    .add(
+                                        egui::Button::new(
+                                            egui::RichText::new("打开文件").size(15.0),
+                                        )
+                                        .min_size(Vec2::new(BUTTON_W, BUTTON_H)),
+                                    )
+                                    .clicked()
+                                {
+                                    self.pick_file(ctx);
+                                }
+                                if ui
+                                    .add(
+                                        egui::Button::new(
+                                            egui::RichText::new("打开文件夹").size(15.0),
+                                        )
+                                        .min_size(Vec2::new(BUTTON_W, BUTTON_H)),
+                                    )
+                                    .clicked()
+                                {
+                                    self.pick_folder(ctx);
+                                }
+                            },
+                        );
 
                         ui.add_space(20.0);
                         ui.label(
@@ -1068,4 +1086,52 @@ fn preview_box(canvas: Rect, ppp: f32) -> (u32, u32) {
         .next_power_of_two()
         .clamp(PREVIEW_MIN_EDGE, PREVIEW_MAX_EDGE);
     (quantized, quantized)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The welcome page's two buttons used to hug the left edge of the card,
+    /// because a bare `ui.horizontal` hands the row the whole card width. This
+    /// runs a real frame headlessly and checks where the buttons actually land.
+    #[test]
+    fn welcome_buttons_are_centred() {
+        let ctx = egui::Context::default();
+        let input = egui::RawInput {
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1280.0, 800.0))),
+            ..Default::default()
+        };
+
+        let mut buttons = Vec::new();
+        let mut centre = 0.0;
+        let mut output = ctx.run_ui(input, |ui| {
+            centre = ui.max_rect().center().x;
+            ui.vertical_centered(|ui| {
+                ui.set_max_width(440.0);
+                ui.allocate_ui_with_layout(
+                    Vec2::new(BUTTON_W * 2.0 + BUTTON_GAP, BUTTON_H),
+                    egui::Layout::left_to_right(egui::Align::Center),
+                    |ui| {
+                        ui.spacing_mut().item_spacing.x = BUTTON_GAP;
+                        for label in ["打开文件", "打开文件夹"] {
+                            let button = ui.add(
+                                egui::Button::new(label).min_size(Vec2::new(BUTTON_W, BUTTON_H)),
+                            );
+                            buttons.push(button.rect);
+                        }
+                    },
+                );
+            });
+        });
+        // Nothing is driving a renderer here, so the texture uploads a real
+        // frame would produce have to be discarded explicitly.
+        output.textures_delta.clear();
+
+        let middle = 0.5 * (buttons[0].min.x + buttons[1].max.x);
+        assert!(
+            (middle - centre).abs() <= 1.0,
+            "button row centres at {middle}, but the card centres at {centre}"
+        );
+    }
 }
