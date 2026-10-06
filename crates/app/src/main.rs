@@ -1,5 +1,10 @@
 //! MapleView: a fast, keyboard-first image viewer.
 
+// A packaged build must not flash a console window, and neither `tracing` nor
+// `eprintln!` output is any use to someone double-clicking the exe. Debug builds
+// keep the console so `RUST_LOG` still works while developing.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 mod app;
 mod brand;
 mod fonts;
