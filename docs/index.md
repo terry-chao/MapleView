@@ -1,6 +1,6 @@
 ---
-title: MapleView — 快如闪电的图片预览
-description: MapleView 是一个用 Rust 写的桌面图片查看器：20+ 格式、GPU 渲染、后台多线程解码、相邻图片预取与字节预算缓存，翻页基本零等待。
+title: 快如闪电的图片预览
+description: 枫阅是一个用 Rust 写的桌面图片查看器：20+ 格式、GPU 渲染、后台多线程解码、相邻图片预取与字节预算缓存，翻页基本零等待。
 hide:
   - navigation
   - toc
@@ -22,7 +22,7 @@ hide:
 
 ## 主要功能
 
-「快」是它最想被记住的一点，但快不是全部。下面是 MapleView 现在就能做的事：
+「快」是它最想被记住的一点，但快不是全部。下面是枫阅现在就能做的事：
 
 <div class="mx-cards">
   <div class="mx-card">
@@ -193,7 +193,7 @@ cargo build --release
 
 ## 想要更快，或者想吐槽
 
-MapleView 是 MIT 协议的开源项目，issue 和 PR 都欢迎。
+枫阅是 MIT 协议的开源项目，issue 和 PR 都欢迎。
 如果它在你机器上比别的看图工具慢，那是个 bug，请带上格式和尺寸开个 issue。
 
 <div class="mx-cta" style="margin-top:1.4rem">

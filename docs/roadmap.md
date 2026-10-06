@@ -34,7 +34,7 @@
 
 ## 怎么参与
 
-如果 MapleView 在你机器上比别的看图工具慢，那是个 bug。开 issue 时请带上：
+如果枫阅在你机器上比别的看图工具慢，那是个 bug。开 issue 时请带上：
 
 - 图片格式与像素尺寸（`mapleview-cli info` 的输出最好）
 - 复现步骤和 `RUST_LOG=mapleview=debug` 的日志

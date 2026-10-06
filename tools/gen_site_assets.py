@@ -383,14 +383,29 @@ def brand_icon(size: int) -> Image.Image:
 
 
 def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    for name in ("segoeuib.ttf", "seguisb.ttf", "arialbd.ttf", "DejaVuSans-Bold.ttf"):
-        for root in (r"C:\Windows\Fonts", "/usr/share/fonts/truetype/dejavu"):
-            candidate = os.path.join(root, name)
-            if os.path.exists(candidate):
-                try:
-                    return ImageFont.truetype(candidate, size)
-                except OSError:
-                    pass
+    """A bold face that can actually draw 枫阅.
+
+    The card title is Chinese, and Segoe UI / Arial ship no CJK glyphs -- Pillow
+    would quietly draw .notdef tofu instead. So a CJK-capable bold is tried
+    first, and the Latin faces are only a last resort.
+    """
+    candidates = (
+        (r"C:\Windows\Fonts", "msyhbd.ttc"),      # 微软雅黑 Bold
+        (r"C:\Windows\Fonts", "simhei.ttf"),      # 黑体
+        (r"C:\Windows\Fonts", "Dengb.ttf"),       # 等线 Bold
+        ("/usr/share/fonts/opentype/noto", "NotoSansCJK-Bold.ttc"),
+        ("/usr/share/fonts/truetype/noto", "NotoSansCJKsc-Bold.otf"),
+        (r"C:\Windows\Fonts", "segoeuib.ttf"),
+        (r"C:\Windows\Fonts", "arialbd.ttf"),
+        ("/usr/share/fonts/truetype/dejavu", "DejaVuSans-Bold.ttf"),
+    )
+    for root, name in candidates:
+        candidate = os.path.join(root, name)
+        if os.path.exists(candidate):
+            try:
+                return ImageFont.truetype(candidate, size)
+            except OSError:
+                pass
     return ImageFont.load_default(size)
 
 
@@ -403,7 +418,7 @@ def social_card(path: str) -> None:
     d = ImageDraw.Draw(card)
     icon = brand_icon(160)
     card.paste(icon, (72, 72), icon)
-    d.text((78, 292), "MapleView", font=_font(88), fill=(255, 255, 255))
+    d.text((78, 292), "枫阅", font=_font(88), fill=(255, 255, 255))
     d.text((82, 402), "快如闪电的图片预览  ·  Rust + wgpu", font=_font(36), fill=(247, 178, 75))
     # 1200×630 的社交卡片用 JPEG：PNG 会有半 MB 以上，没必要。
     card.save(path, "JPEG", quality=88, optimize=True, progressive=True)

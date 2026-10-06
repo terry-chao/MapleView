@@ -12,7 +12,7 @@
   {% set mv_social = config.site_url ~ 'assets/brand/social-card.jpg' %}
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="{{ config.site_name }}">
-  <meta property="og:title" content="{% if page and page.is_homepage %}MapleView — 快如闪电的图片预览{% else %}{{ page.title }} — {{ config.site_name }}{% endif %}">
+  <meta property="og:title" content="{% if page and page.is_homepage %}枫阅 — 快如闪电的图片预览{% else %}{{ page.title }} — {{ config.site_name }}{% endif %}">
   <meta property="og:description" content="{% if page.meta and page.meta.description %}{{ page.meta.description }}{% else %}{{ config.site_description }}{% endif %}">
   <meta property="og:image" content="{{ mv_social }}">
   {% if page.canonical_url %}<meta property="og:url" content="{{ page.canonical_url }}">{% endif %}

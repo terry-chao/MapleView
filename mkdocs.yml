@@ -1,4 +1,4 @@
-# MapleView 官网 —— MkDocs + Material，首页是一块自己写的交互式演示。
+# 枫阅 官网 —— MkDocs + Material，首页是一块自己写的交互式演示。
 #
 # 本地预览：
 #   python tools/gen_site_assets.py   # 生成演示图集与品牌资源（只需跑一次）
@@ -7,11 +7,11 @@
 # 构建：
 #   mkdocs build --strict
 
-site_name: MapleView
+site_name: 枫阅
 site_description: 快如闪电的图片预览 —— 一个用 Rust 写的桌面图片查看器，20+ 格式、GPU 渲染、翻页零等待。
 site_url: https://terry-chao.github.io/MapleView/
 site_author: terry-chao
-copyright: MIT Licensed · MapleView
+copyright: MIT Licensed · 枫阅
 
 repo_url: https://github.com/terry-chao/MapleView
 repo_name: terry-chao/MapleView
@@ -25,7 +25,7 @@ theme:
   name: material
   custom_dir: overrides
   language: zh
-  logo: assets/brand/mark.svg
+  logo: assets/brand/icon-180.png
   favicon: assets/brand/favicon.ico
   # 不拉 Google Fonts：官网自己就该是快的，字体走系统栈。
   font: false
