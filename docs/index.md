@@ -20,6 +20,53 @@ hide:
 这不是把桌面端搬进浏览器，而是**同一套策略**的浏览器实现。桌面端的瓶颈在解码器
 而不是界面逻辑，所以这些取舍在两端是通用的。
 
+## 主要功能
+
+「快」是它最想被记住的一点，但快不是全部。下面是 MapleView 现在就能做的事：
+
+<div class="mx-cards">
+  <div class="mx-card">
+    <span class="mx-card__glyph">🗂️</span>
+    <h3>把文件夹当相册翻</h3>
+    <p>打开单个文件、整个文件夹、命令行传路径，或者直接把图片拖进窗口都行。同目录的
+       兄弟文件自动就位，按文件名自然排序（<code>img2</code> 排在 <code>img10</code> 前面），
+       方向键一路翻到底。</p>
+  </div>
+  <div class="mx-card">
+    <span class="mx-card__glyph">🔍</span>
+    <h3>缩放像拿放大镜</h3>
+    <p>滚轮以光标为锚点缩放，光标下的那个像素不会跑。适应窗口、按宽度、100% 像素级、
+       自由倍率随时切换；放大超过 100% 自动切最近邻采样，像素边缘不糊。</p>
+  </div>
+  <div class="mx-card">
+    <span class="mx-card__glyph">⌨️</span>
+    <h3>键盘就能翻完整个相册</h3>
+    <p><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd>、空格、<kbd>Home</kbd> /
+       <kbd>End</kbd> 切图，<kbd>F11</kbd> 全屏，<kbd>I</kbd> 看完整 EXIF，
+       <kbd>H</kbd> 调出快捷键表。双击在「适应窗口」和「100%」之间来回。</p>
+  </div>
+  <div class="mx-card">
+    <span class="mx-card__glyph">🧾</span>
+    <h3>格式不挑食</h3>
+    <p>内置 20+ 种格式：PNG / APNG、JPEG、GIF、WebP、BMP、TIFF、TGA、ICO、QOI、
+       HDR、EXR、DDS、AVIF……格式判定以文件头为准，把 <code>.RAW</code> 改名成
+       <code>.jpg</code> 也照样认得出来。</p>
+  </div>
+  <div class="mx-card">
+    <span class="mx-card__glyph">🖼️</span>
+    <h3>巨图不崩</h3>
+    <p>超过 64 MP 的图自动降采样显示，而不是拒绝或 OOM；512 MP 以内都能坦然打开。
+       竖向拍摄的照片靠 EXIF 方向自动转正，不会再横过来。</p>
+  </div>
+  <div class="mx-card">
+    <span class="mx-card__glyph">🖥️</span>
+    <h3>跨平台，还能接进脚本</h3>
+    <p>Windows / macOS / Linux 都能跑，渲染走 wgpu。附带无界面的
+       <code>mapleview-cli</code>，与 GUI 共用同一条解码路径，<code>info</code> /
+       <code>thumb</code> / <code>bench</code> 可以直接接进脚本和 CI。</p>
+  </div>
+</div>
+
 ## 快，来自四个决定
 
 <div class="mx-cards">
