@@ -120,7 +120,9 @@
     "  var bytes = 0, fetchMs = 0, decodeMs = 0, probeMs = 0;",
     "  var bitmap = null, width = 0, height = 0, error = null;",
     "  try {",
-    "    var res = await fetch(url, { cache: 'force-cache' });",
+    // 用默认缓存策略而不是 force-cache：图片是同名覆盖发布的，
+    // 强制读缓存会在重新部署后拿到旧图，和 manifest 里的尺寸对不上。
+    "    var res = await fetch(url, { cache: 'default' });",
     "    if (!res.ok) throw new Error('HTTP ' + res.status);",
     "    var buf = await res.arrayBuffer();",
     "    bytes = buf.byteLength;",
@@ -374,7 +376,9 @@
     ctx.imageSmoothingEnabled = !(zoom >= 1 && state.frame.kind === "full");
     ctx.imageSmoothingQuality = "high";
     ctx.setTransform(state.view.scale, 0, 0, state.view.scale, state.view.tx, state.view.ty);
-    ctx.drawImage(state.frame.entry.bitmap, 0, 0);
+    // 关键：把位图映射到 item.w × item.h 这个「源图像素」矩形上。
+    // 预览位图和全分辨率位图像素数不同，但几何一样 —— 这正是切换纹理时画面不跳的原因。
+    ctx.drawImage(state.frame.entry.bitmap, 0, 0, item.w, item.h);
     viewport.classList.add("has-frame");
     updateZoomLabel();
   }
@@ -487,10 +491,14 @@
       if (!it.thumbEl) return;
       var on = i === state.index;
       it.thumbEl.classList.toggle("is-current", on);
-      if (on && it.thumbEl.scrollIntoView) {
-        it.thumbEl.scrollIntoView({ block: "nearest", inline: "center", behavior: REDUCED ? "auto" : "smooth" });
-      }
     });
+    // 手动滚动缩略图条，而不是 scrollIntoView —— 后者会连带滚动所有可滚动祖先，
+    // 把整个 Hero（overflow:hidden 的盒子也能被程序化滚动）推到左边去。
+    var current = state.items[state.index];
+    if (current && current.thumbEl && strip.scrollTo) {
+      var target = current.thumbEl.offsetLeft - (strip.clientWidth - current.thumbEl.offsetWidth) / 2;
+      strip.scrollTo({ left: Math.max(0, target), behavior: REDUCED ? "auto" : "smooth" });
+    }
   }
 
   function cancelStale(seq) {
@@ -646,6 +654,9 @@
 
   viewport.addEventListener("wheel", function (ev) {
     if (state.index < 0) return;
+    // 已经在「适应窗口」还要缩小是没有意义的 —— 这时候把滚轮还给页面，
+    // 否则鼠标停在演示台上就滚不到下面的正文了。
+    if (ev.deltaY > 0 && state.view.scale <= state.view.fit * 1.001) return;
     ev.preventDefault();
     stopAutoplay();
     var p = pointerPos(ev);
@@ -756,13 +767,16 @@
         if (res && res.bitmap) res.bitmap.close();
         return;
       }
+      // 缩略图留在缓存里还有一个用处：主图还没解完时先拿它撑住画面，
+      // 这就是「先预览、后全分辨率」里最便宜的那一级。
+      var entry = cachePut(item, "thumb", res);
+      if (!entry) return;
       var cv = item.thumbCanvas;
       var g = cv.getContext("2d");
-      var scale = Math.max(cv.width / res.bitmap.width, cv.height / res.bitmap.height);
-      var dw = res.bitmap.width * scale;
-      var dh = res.bitmap.height * scale;
-      g.drawImage(res.bitmap, (cv.width - dw) / 2, (cv.height - dh) / 2, dw, dh);
-      res.bitmap.close();
+      var scale = Math.max(cv.width / entry.w, cv.height / entry.h);
+      var dw = entry.w * scale;
+      var dh = entry.h * scale;
+      g.drawImage(entry.bitmap, (cv.width - dw) / 2, (cv.height - dh) / 2, dw, dh);
       item.thumbEl.classList.add("is-ready");
     });
   }
@@ -881,6 +895,8 @@
     queue.forEach(function (job) { job.cancelled = true; pending.delete(job.key); });
     queue = [];
     slots.forEach(function (slot) { if (slot.job) slot.job.cancelled = true; });
+    // 先丢掉对当前帧的引用，再清缓存 —— 否则会留下一个指向已 close 位图的悬空引用。
+    setFrame(null);
     // 清掉预览/全分辨率缓存（缩略图留着，它属于界面的一部分）。
     Array.from(state.cache.keys()).forEach(function (key) {
       if (key.indexOf("|thumb") < 0) dropEntry(key);
@@ -977,7 +993,10 @@
       if (!state.ready) return;
       resizeCanvas();
       var item = state.items[state.index];
-      if (item && state.view.mode === "fit") { fitView(item); draw(); }
+      if (!item) return;
+      if (state.view.mode === "fit") fitView(item);
+      // 改 canvas.width 会清空画布，所以这里必须重画，不管当前是不是适应窗口。
+      draw();
     }).observe(viewport);
   }
 

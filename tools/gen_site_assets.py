@@ -427,7 +427,8 @@ def social_card(path: str) -> None:
     card.paste(icon, (72, 72), icon)
     d.text((78, 292), "MapleView", font=_font(88), fill=(255, 255, 255))
     d.text((82, 402), "快如闪电的图片预览  ·  Rust + wgpu", font=_font(36), fill=(247, 178, 75))
-    card.save(path, "PNG", optimize=True)
+    # 1200×630 的社交卡片用 JPEG：PNG 会有半 MB 以上，没必要。
+    card.save(path, "JPEG", quality=88, optimize=True, progressive=True)
 
 
 def main() -> int:
@@ -446,7 +447,9 @@ def main() -> int:
         for idx, (slug, title, fmt, fn, opts) in enumerate(CORPUS):
             if only and slug != only:
                 continue
-            img = fn(HERO_W, HERO_H, seed=1000 + idx * 17)
+            # 生成器签名是 (h, w)，别写反了 —— 反了会得到 2000×3000 的竖图，
+            # 而 manifest 里写着 3000×2000，预览缩放就会把画压扁。
+            img = fn(HERO_H, HERO_W, seed=1000 + idx * 17)
             pil = to_pil(img)
             ext = {"JPEG": "jpg", "PNG": "png", "WebP": "webp"}[fmt]
             name = f"{slug}.{ext}"
@@ -484,7 +487,7 @@ def main() -> int:
     for size in (32, 48, 180, 512):
         brand_icon(size).save(os.path.join(IMG_DIR, f"icon-{size}.png"))
     brand_icon(64).save(os.path.join(IMG_DIR, "favicon.ico"), sizes=[(16, 16), (32, 32), (48, 48), (64, 64)])
-    social_card(os.path.join(IMG_DIR, "social-card.png"))
+    social_card(os.path.join(IMG_DIR, "social-card.jpg"))
     print("wrote brand icons + social card")
     return 0
 

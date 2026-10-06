@@ -13,15 +13,9 @@
   --mx-amber: #f7b24b;
   --mx-orange: #e4572e;
   --mx-red: #b3322a;
-  --mx-red-deep: #7c1f19;
-  --mx-ink: #0a0810;
-  --mx-ink-2: #120e17;
-  --mx-ink-3: #1a1420;
   --mx-fg: #f4efea;
   --mx-muted: #a99f98;
   --mx-line: rgba(255, 255, 255, 0.1);
-  --mx-surface: rgba(255, 255, 255, 0.045);
-  --mx-radius: 16px;
   --mx-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", "Cascadia Mono",
     Consolas, "Liberation Mono", monospace;
   --mx-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
@@ -66,6 +60,9 @@ body {
   position: relative;
   isolation: isolate;
   overflow: hidden;
+  /* overflow: clip 不建立滚动容器，内部元素（比如溢出的辉光）
+     就没法把整个 Hero 程序化地滚走。旧浏览器会保留上一行的 hidden。 */
+  overflow: clip;
   padding: clamp(2.4rem, 5vw, 4.6rem) 0 clamp(2.6rem, 6vw, 5rem);
   background:
     radial-gradient(120% 90% at 78% -10%, rgba(228, 87, 46, 0.22), transparent 60%),
@@ -116,7 +113,9 @@ body {
 }
 
 .mx-hero__inner {
-  max-width: 76rem;
+  /* 用 px 而不是 rem：Material 会把 html 的 font-size 改成 125%，
+     用 rem 写容器宽度会随用户字号放大到超出视口。 */
+  max-width: 1180px;
   margin: 0 auto;
   padding: 0 1rem;
 }
@@ -201,10 +200,10 @@ body {
   align-items: center;
   gap: 0.5em;
   padding: 0.72em 1.3em;
-  border: 1px solid var(--mx-line);
+  border: 1px solid var(--md-default-fg-color--lighter);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--mx-fg) !important;
+  background: var(--md-code-bg-color);
+  color: var(--md-default-fg-color) !important;
   font-size: 0.92rem;
   font-weight: 600;
   text-decoration: none;
@@ -213,6 +212,17 @@ body {
 
 .mx-btn:hover {
   transform: translateY(-2px);
+  border-color: var(--md-accent-fg-color);
+}
+
+/* Hero 永远是深色底，所以按钮在里面单独配色，不跟主题走。 */
+.mx-hero .mx-btn {
+  border-color: var(--mx-line);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--mx-fg) !important;
+}
+
+.mx-hero .mx-btn:hover {
   border-color: rgba(255, 255, 255, 0.28);
   background: rgba(255, 255, 255, 0.09);
 }
@@ -222,6 +232,11 @@ body {
   background: linear-gradient(120deg, var(--mx-amber), var(--mx-orange));
   color: #1a0d06 !important;
   box-shadow: 0 12px 30px -14px rgba(228, 87, 46, 0.9);
+}
+
+.mx-btn--primary:hover {
+  border-color: transparent;
+  background: linear-gradient(120deg, var(--mx-amber), var(--mx-orange));
 }
 
 .mx-stats {
@@ -364,7 +379,8 @@ body {
   overflow: hidden;
   cursor: grab;
   outline: none;
-  touch-action: none;
+  /* 允许竖屏手势翻页，但横向拖拽留给平移。 */
+  touch-action: pan-y;
 }
 
 .mx-viewport:active {
@@ -790,20 +806,6 @@ body {
 
 /* 4 -------------------------------------------------------- 正文区块 */
 
-.mx-section-head {
-  margin: 0.4rem 0 1.2rem;
-}
-
-.mx-kicker {
-  display: block;
-  margin-bottom: 0.4rem;
-  font-family: var(--mx-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--md-accent-fg-color);
-}
-
 .mx-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
@@ -847,49 +849,31 @@ body {
   font-size: 1rem;
 }
 
-.mx-bars {
-  display: grid;
-  gap: 0.55rem;
-  margin: 1.2rem 0;
-}
-
-.mx-bar {
-  display: grid;
-  grid-template-columns: 11rem minmax(0, 1fr) 5.5rem;
+/* 管线示意图：一条横向的流水线，用箭头串起来。 */
+.mx-flow {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.8rem;
-  font-size: 0.82rem;
-}
-
-.mx-bar__track {
-  position: relative;
-  height: 0.55rem;
-  border-radius: 999px;
+  gap: 0.4rem;
+  margin: 1.1rem 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 14px;
   background: var(--md-code-bg-color);
-  overflow: hidden;
 }
 
-.mx-bar__fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: var(--w, 50%);
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--mx-amber), var(--mx-orange));
-  transform-origin: left center;
-  animation: mx-grow 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
-
-@keyframes mx-grow {
-  from {
-    transform: scaleX(0);
-  }
-}
-
-.mx-bar__v {
+.mx-flow span {
+  padding: 0.3em 0.7em;
+  border-radius: 8px;
+  background: linear-gradient(120deg, rgba(247, 178, 75, 0.16), rgba(228, 87, 46, 0.16));
   font-family: var(--mx-mono);
-  font-size: 0.78rem;
-  text-align: right;
-  color: var(--md-default-fg-color--light);
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.mx-flow i {
+  font-style: normal;
+  color: var(--md-default-fg-color--lightest);
 }
 
 .mx-badges {
@@ -995,20 +979,11 @@ body {
     max-width: 70%;
   }
 
-  .mx-bar {
-    grid-template-columns: minmax(0, 1fr) 4.6rem;
-  }
-
-  .mx-bar__track {
-    grid-column: 1 / -1;
-    order: 3;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .mx-pulse,
   .mx-spinner span,
-  .mx-bar__fill,
   .mx-viewport.is-naive.has-frame canvas {
     animation: none !important;
   }

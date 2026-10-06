@@ -6,3 +6,28 @@
     {% include "partials/lightning-hero.html" %}
   {% endif %}
 {% endblock %}
+
+{#- 分享卡片：og:image 用的是 tools/gen_site_assets.py 生成的 1200×630 图。 -#}
+{% block extrahead %}
+  {% set mv_social = config.site_url ~ 'assets/brand/social-card.jpg' %}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ config.site_name }}">
+  <meta property="og:title" content="{% if page and page.is_homepage %}MapleView — 快如闪电的图片预览{% else %}{{ page.title }} — {{ config.site_name }}{% endif %}">
+  <meta property="og:description" content="{% if page.meta and page.meta.description %}{{ page.meta.description }}{% else %}{{ config.site_description }}{% endif %}">
+  <meta property="og:image" content="{{ mv_social }}">
+  {% if page.canonical_url %}<meta property="og:url" content="{{ page.canonical_url }}">{% endif %}
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="{{ mv_social }}">
+{% endblock %}
+
+{#-
+  首页的标题已经在 Hero 里了，这里直接输出正文，避免 Material 再补一个重复的 <h1>。
+  其它页面照旧走默认的 content 块（带标题、标签、反馈入口）。
+-#}
+{% block content %}
+  {% if page and page.is_homepage %}
+    {{ page.content }}
+  {% else %}
+    {{ super() }}
+  {% endif %}
+{% endblock %}

@@ -6,7 +6,7 @@ window.MV_CORPUS = [
     "format": "JPEG",
     "w": 3000,
     "h": 2000,
-    "bytes": 150308
+    "bytes": 155226
   },
   {
     "file": "02-sunset.jpg",
@@ -14,7 +14,7 @@ window.MV_CORPUS = [
     "format": "JPEG",
     "w": 3000,
     "h": 2000,
-    "bytes": 151431
+    "bytes": 156776
   },
   {
     "file": "03-forest.jpg",
@@ -22,7 +22,7 @@ window.MV_CORPUS = [
     "format": "JPEG",
     "w": 3000,
     "h": 2000,
-    "bytes": 207825
+    "bytes": 200653
   },
   {
     "file": "04-dunes.jpg",
@@ -30,7 +30,7 @@ window.MV_CORPUS = [
     "format": "JPEG",
     "w": 3000,
     "h": 2000,
-    "bytes": 183520
+    "bytes": 179340
   },
   {
     "file": "05-ocean.jpg",
@@ -38,7 +38,7 @@ window.MV_CORPUS = [
     "format": "JPEG",
     "w": 3000,
     "h": 2000,
-    "bytes": 230185
+    "bytes": 234355
   },
   {
     "file": "06-neon.jpg",
@@ -46,7 +46,7 @@ window.MV_CORPUS = [
     "format": "JPEG",
     "w": 3000,
     "h": 2000,
-    "bytes": 280992
+    "bytes": 247816
   },
   {
     "file": "07-maple.jpg",
@@ -54,7 +54,7 @@ window.MV_CORPUS = [
     "format": "JPEG",
     "w": 3000,
     "h": 2000,
-    "bytes": 334940
+    "bytes": 290005
   },
   {
     "file": "08-mist.jpg",
@@ -62,7 +62,7 @@ window.MV_CORPUS = [
     "format": "JPEG",
     "w": 3000,
     "h": 2000,
-    "bytes": 171815
+    "bytes": 178286
   },
   {
     "file": "09-violet.jpg",
@@ -70,7 +70,7 @@ window.MV_CORPUS = [
     "format": "JPEG",
     "w": 3000,
     "h": 2000,
-    "bytes": 376298
+    "bytes": 384793
   },
   {
     "file": "10-stars.jpg",
@@ -78,7 +78,7 @@ window.MV_CORPUS = [
     "format": "JPEG",
     "w": 3000,
     "h": 2000,
-    "bytes": 260516
+    "bytes": 299194
   },
   {
     "file": "11-minimal.png",
@@ -86,7 +86,7 @@ window.MV_CORPUS = [
     "format": "PNG",
     "w": 3000,
     "h": 2000,
-    "bytes": 3927064
+    "bytes": 201092
   },
   {
     "file": "12-snow.webp",
@@ -94,6 +94,6 @@ window.MV_CORPUS = [
     "format": "WebP",
     "w": 3000,
     "h": 2000,
-    "bytes": 23884
+    "bytes": 25564
   }
 ];
