@@ -68,6 +68,18 @@ cargo run --release -p mapleview-app -- D:\photos\IMG_0001.jpg
 cargo test --workspace
 ```
 
+打包 Windows 发行版（release exe + zip + SHA256，产物落在 `dist/`）：
+
+```powershell
+pwsh tools/package-windows.ps1
+pwsh tools/package-windows.ps1 -IncludeCli -KeepStaging   # 连 CLI 一起打，保留暂存目录
+```
+
+不想敲命令行的话，直接双击仓库根目录的 `package-windows.cmd`，它跑的是同一个脚本。
+
+包里的 exe 文件名跟着系统语言走：中文环境是 `枫阅.exe`，其他环境是 `mapleview.exe`，
+跟窗口标题用的是同一套判断；想固定名字就传 `-AppFileName`。zip 本身始终是 ASCII 名。
+
 日志用 `RUST_LOG` 控制：
 
 ```powershell
