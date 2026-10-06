@@ -1,0 +1,39 @@
+name: 官网
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "overrides/**"
+      - "mkdocs.yml"
+      - "tools/gen_site_assets.py"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      # Material 会把构建产物缓存在 .cache 里，key 每周换一次
+      - run: echo "cache_id=$(date --utc +%V)" >> "$GITHUB_ENV"
+      - uses: actions/cache@v4
+        with:
+          key: mkdocs-material-${{ env.cache_id }}
+          path: .cache
+          restore-keys: mkdocs-material-
+
+      - run: pip install mkdocs-material
+
+      # docs/assets/demo 里的演示图集是提交进仓库的，
+      # CI 不需要跑 tools/gen_site_assets.py（它只是用来重新生成这些图）。
+      - run: mkdocs gh-deploy --force
