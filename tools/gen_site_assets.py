@@ -27,6 +27,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEMO_DIR = os.path.join(ROOT, "docs", "assets", "demo")
 JS_DIR = os.path.join(ROOT, "docs", "assets", "javascripts")
 IMG_DIR = os.path.join(ROOT, "docs", "assets", "brand")
+# The desktop app's icon set; the site assets are sampled from it.
+ICON_PNG = os.path.join(ROOT, "assets", "logo", "mapleview-icon-512.png")
 
 HERO_W, HERO_H = 3000, 2000  # 6 MP, the size the README benchmarks against.
 
@@ -370,38 +372,14 @@ def fmt_bytes(n: int) -> str:
     return f"{n / 1024:.0f} KB"
 
 
-def brand_icon(size: int, radius_ratio: float = 0.22) -> Image.Image:
-    """The maple-leaf mark, drawn at any size (Pillow cannot read the SVG)."""
-    ss = 4  # supersample for smooth edges
-    px = size * ss
-    img = Image.new("RGBA", (px, px), (0, 0, 0, 0))
-    grad = Image.new("RGB", (px, px))
-    d = ImageDraw.Draw(grad)
-    for y in range(px):
-        t = y / max(px - 1, 1)
-        if t < 0.5:
-            k = t / 0.5
-            c = tuple(int(a + (b - a) * k) for a, b in zip((247, 178, 75), (228, 87, 46)))
-        else:
-            k = (t - 0.5) / 0.5
-            c = tuple(int(a + (b - a) * k) for a, b in zip((228, 87, 46), (179, 42, 34)))
-        d.line([(0, y), (px, y)], fill=c)
-    mask = Image.new("L", (px, px), 0)
-    ImageDraw.Draw(mask).rounded_rectangle([0, 0, px - 1, px - 1], radius=int(px * radius_ratio), fill=255)
-    img.paste(grad, (0, 0), mask)
+def brand_icon(size: int) -> Image.Image:
+    """The app icon, downsampled from the bitmap the desktop build ships.
 
-    # Leaf outline lifted from assets/logo/mapleview-mark.svg, normalised to 0..100.
-    pts = [
-        (50, 4), (57.6, 35.7), (83.7, 23.7), (68.7, 48.4), (93.7, 66.2), (61.5, 68.4),
-        (52.5, 74), (52.5, 100), (47.5, 100), (47.5, 74), (38.5, 68.4), (6.3, 66.2),
-        (31.3, 48.4), (16.3, 23.7), (42.4, 35.7),
-    ]
-    scale = px * 0.66 / 100.0
-    off = (px - px * 0.66) / 2
-    d2 = ImageDraw.Draw(img)
-    poly = [(off + x * scale, off + y * scale) for x, y in pts]
-    d2.polygon(poly, fill=(255, 255, 255, 240))
-    return img.resize((size, size), Image.LANCZOS)
+    Keeping one source of truth means the favicon, the touch icon and the social
+    card can never drift away from the .exe icon again.
+    """
+    with Image.open(ICON_PNG) as source:
+        return source.convert("RGBA").resize((size, size), Image.LANCZOS)
 
 
 def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -423,7 +401,7 @@ def social_card(path: str) -> None:
     overlay = Image.new("RGB", (w, h), (10, 9, 14))
     card = Image.blend(card, overlay, 0.55)
     d = ImageDraw.Draw(card)
-    icon = brand_icon(160, radius_ratio=0.24)
+    icon = brand_icon(160)
     card.paste(icon, (72, 72), icon)
     d.text((78, 292), "MapleView", font=_font(88), fill=(255, 255, 255))
     d.text((82, 402), "快如闪电的图片预览  ·  Rust + wgpu", font=_font(36), fill=(247, 178, 75))
