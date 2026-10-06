@@ -4,6 +4,21 @@
 
 目前处于 **M1 完成** 的状态：能打开单个文件或整个文件夹，GPU 渲染，滚轮以光标为中心缩放，拖拽平移，键盘切图，后台多线程解码 + 预取 + 字节预算缓存。
 
+## 官网
+
+`docs/` 下是一个 MkDocs（Material）站点，首页带一个可以真跑的「闪电预览」演示台：
+在浏览器里用 Web Worker 池做真实解码，实时显示每张图的解码毫秒数、缓存命中、
+字节占用和延迟分布，还能一键切到「朴素管线」感受没有预取/缓存时有多慢。
+
+```powershell
+python tools\gen_site_assets.py   # 生成演示图集与品牌图标（只在改动生成脚本后需要）
+mkdocs serve                      # http://127.0.0.1:8000
+mkdocs build --strict             # 产出到 site/
+```
+
+演示图集（`docs/assets/demo/`，12 张 6 MP 图，约 2.4 MB）是提交进仓库的，
+所以 CI 只要 `pip install mkdocs-material && mkdocs gh-deploy` 就能发布。
+
 ## 现在能用什么
 
 **查看**
