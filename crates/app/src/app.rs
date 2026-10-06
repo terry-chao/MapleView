@@ -69,6 +69,8 @@ pub struct MapleView {
     displayed: Option<Arc<Decoded>>,
     texture: Option<TextureHandle>,
     texture_nearest: Option<bool>,
+    /// The brand mark, decoded once and reused by the welcome page and About.
+    logo: Option<TextureHandle>,
 
     /// A path waiting to be loaded once the canvas size is known.
     pending_open: Option<PathBuf>,
@@ -109,6 +111,7 @@ impl MapleView {
             displayed: None,
             texture: None,
             texture_nearest: None,
+            logo: load_logo(&cc.egui_ctx),
             pending_open: None,
             request: None,
             tier_full: false,
@@ -472,6 +475,9 @@ impl MapleView {
 
             ui.toggle_value(&mut self.show_info, "信息");
             ui.toggle_value(&mut self.show_help, "快捷键");
+            if ui.button("关于").clicked() {
+                self.show_about = true;
+            }
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if let Some(decoded) = self.displayed.as_ref() {
@@ -606,6 +612,7 @@ impl MapleView {
         if !self.show_about {
             return;
         }
+        let logo = self.logo.clone();
         egui::Window::new("关于")
             .open(&mut self.show_about)
             .resizable(false)
@@ -613,9 +620,13 @@ impl MapleView {
             .show(ctx, |ui| {
                 ui.set_min_width(320.0);
                 ui.vertical_centered(|ui| {
-                    draw_logo(ui);
+                    draw_logo(ui, logo.as_ref());
                     ui.add_space(8.0);
-                    ui.label(egui::RichText::new("MapleView").size(22.0).strong());
+                    ui.label(
+                        egui::RichText::new(crate::brand::display_name())
+                            .size(22.0)
+                            .strong(),
+                    );
                     ui.label(
                         egui::RichText::new(format!("版本 {}", env!("CARGO_PKG_VERSION"))).weak(),
                     );
@@ -811,6 +822,7 @@ impl MapleView {
 
     fn welcome_screen(&mut self, ui: &mut egui::Ui, ctx: &egui::Context, rect: Rect) {
         let top = ((rect.height() - 360.0) * 0.5).max(0.0);
+        let logo = self.logo.clone();
         ui.vertical_centered(|ui| {
             ui.add_space(top);
             egui::Frame::new()
@@ -821,9 +833,13 @@ impl MapleView {
                 .show(ui, |ui| {
                     ui.set_max_width(440.0);
                     ui.vertical_centered(|ui| {
-                        draw_logo(ui);
+                        draw_logo(ui, logo.as_ref());
                         ui.add_space(14.0);
-                        ui.label(egui::RichText::new("MapleView").size(32.0).strong());
+                        ui.label(
+                            egui::RichText::new(crate::brand::display_name())
+                                .size(32.0)
+                                .strong(),
+                        );
                         ui.add_space(6.0);
                         ui.label(
                             egui::RichText::new("快、顺手、格式尽可能全的图片查看器")
@@ -893,14 +909,6 @@ impl eframe::App for MapleView {
         self.drain_results(&ctx);
         self.handle_drops(&ctx);
         self.handle_keys(&ctx);
-
-        egui::Panel::top("mapleview.menubar").show(ui, |ui| {
-            egui::MenuBar::new().ui(ui, |ui| {
-                if ui.button("关于").clicked() {
-                    self.show_about = true;
-                }
-            });
-        });
 
         egui::Panel::top("mapleview.toolbar").show(ui, |ui| {
             self.toolbar(ui, &ctx);
@@ -973,11 +981,46 @@ fn row(ui: &mut egui::Ui, name: &str, value: &str) {
     ui.end_row();
 }
 
-/// A small, font-independent "photo" mark for the welcome page: a rounded frame
-/// with a sun and a mountain, so the empty state has an identity even before any
-/// font glyphs are drawn.
-fn draw_logo(ui: &mut egui::Ui) {
+/// Decodes the embedded brand mark into a texture for the welcome page and the
+/// About dialog. This runs once, at startup.
+fn load_logo(ctx: &egui::Context) -> Option<TextureHandle> {
+    let decoded = mapleview_core::decode_bytes(
+        crate::ICON_PNG,
+        Path::new("mapleview-icon.png"),
+        DecodeHint::full(),
+    )
+    .ok()?;
+    let (width, height) = decoded.dimensions();
+    let pixels = decoded
+        .image
+        .into_raw()
+        .chunks_exact(4)
+        .map(|p| Color32::from_rgba_unmultiplied(p[0], p[1], p[2], p[3]))
+        .collect();
+    Some(ctx.load_texture(
+        "mapleview-logo",
+        ColorImage::new([width as usize, height as usize], pixels),
+        TextureOptions::LINEAR,
+    ))
+}
+
+/// The brand mark shown by the welcome page and the About dialog.
+///
+/// Falls back to a hand-drawn "photo" mark -- a rounded frame with a sun and a
+/// mountain -- if the bitmap ever fails to decode, so the empty state keeps an
+/// identity rather than a hole.
+fn draw_logo(ui: &mut egui::Ui, logo: Option<&TextureHandle>) {
     let (rect, _response) = ui.allocate_exact_size(Vec2::splat(64.0), Sense::hover());
+    if let Some(texture) = logo {
+        ui.painter().image(
+            texture.id(),
+            rect,
+            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+            Color32::WHITE,
+        );
+        return;
+    }
+
     let accent = ui.visuals().selection.bg_fill;
     let painter = ui.painter();
 
