@@ -12,6 +12,9 @@
     可执行文件的图标与版本信息由 crates/app/build.rs 在链接期写进 PE 资源，
     所以包里只需要 exe 本身，不需要额外的运行时文件。
 
+    release 包会检查 exe 的 PE 子系统必须是图形界面，防止回归出「双击先弹
+    一个控制台黑框」的版本。
+
 .EXAMPLE
     pwsh tools/package-windows.ps1
 
@@ -38,6 +41,36 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+<#
+.SYNOPSIS
+    读出 PE 文件 optional header 里的 Subsystem 字段。
+
+.DESCRIPTION
+    2 表示 Windows 图形界面，3 表示控制台。exe 是哪个子系统决定双击时会不会
+    先冒出一个黑框，而这一点只写在 PE 头里，从文件名或大小都看不出来。
+#>
+function Get-PeSubsystem {
+    param([Parameter(Mandatory)][string]$Path)
+
+    $stream = [IO.File]::OpenRead($Path)
+    try {
+        $reader = [IO.BinaryReader]::new($stream)
+        $stream.Position = 0x3c
+        $peOffset = $reader.ReadInt32()
+        $stream.Position = $peOffset
+        if ($reader.ReadUInt32() -ne 0x00004550) { # 'PE\0\0'
+            throw "$Path 不是有效的 PE 文件"
+        }
+        # optional header 跟在 4 字节签名和 20 字节 COFF 头之后，其中的
+        # Subsystem 字段在偏移 68（PE32 与 PE32+ 都一样）。
+        $stream.Position = $peOffset + 24 + 68
+        $reader.ReadUInt16()
+    }
+    finally {
+        $stream.Dispose()
+    }
+}
 
 $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
@@ -90,6 +123,14 @@ try {
         if (-not (Test-Path -LiteralPath $from)) {
             throw "缺少 $from；先不带 -SkipBuild 跑一次"
         }
+        # 只有 app 需要检查：CLI 本来就是控制台程序，黑框是它的正常形态。
+        if ($binary -eq 'mapleview.exe' -and $Profile -eq 'release') {
+            $subsystem = Get-PeSubsystem $from
+            if ($subsystem -ne 2) {
+                throw "$binary 的 PE 子系统是 $subsystem（2 = 图形界面，3 = 控制台）；" +
+                    'release 包不该带控制台窗口，检查 crates/app/src/main.rs 的 windows_subsystem 属性'
+            }
+        }
         Copy-Item -LiteralPath $from -Destination $stage
     }
     foreach ($doc in 'LICENSE', 'README.md') {
@@ -114,6 +155,9 @@ try {
         ForEach-Object { '{0:N1} MB' -f ($_.Length / 1MB) }
     Write-Host ''
     Write-Host "  exe      $exeSize" -ForegroundColor DarkGray
+    if ($Profile -eq 'release') {
+        Write-Host '           图形子系统，双击不弹控制台' -ForegroundColor DarkGray
+    }
     Write-Host "  zip      $zipSize" -ForegroundColor DarkGray
     Write-Host "  sha256   $hash" -ForegroundColor DarkGray
     Write-Host ''
