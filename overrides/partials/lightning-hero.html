@@ -1,0 +1,138 @@
+{#-
+  首页 Hero +「闪电预览」演示台。
+
+  这块 DOM 是给 docs/assets/javascripts/lightning.js 用的，所有会变的内容都带
+  data-mv-* 钩子。没有 JS 时页面依然是一段完整的介绍文字，只是演示台停在
+  「载入中…」——不会白屏。
+-#}
+<section class="mx-hero" id="lightning-preview" data-mv-demo>
+  <div class="mx-hero__bg" aria-hidden="true">
+    <div class="mx-hero__grid"></div>
+    <div class="mx-hero__glow mx-hero__glow--a"></div>
+    <div class="mx-hero__glow mx-hero__glow--b"></div>
+  </div>
+
+  <div class="mx-hero__inner">
+    <div class="mx-hero__top">
+      <div class="mx-hero__copy">
+        <p class="mx-eyebrow"><span class="mx-pulse"></span> Rust · wgpu · MIT · 开源</p>
+        <h1 class="mx-title">快如闪电的<br><em>图片预览</em></h1>
+        <p class="mx-lede">
+          MapleView 是为「翻相册」这件事写的桌面图片查看器：后台多线程解码、
+          相邻图片提前预取、按字节预算的缓存。你按下方向键的那一帧，
+          下一张图已经在显存里等着了。
+        </p>
+        <div class="mx-cta">
+          <a class="mx-btn mx-btn--primary" href="#lightning-preview">立即试一下 <span aria-hidden="true">↓</span></a>
+          <a class="mx-btn" href="{{ config.repo_url }}">在 GitHub 上查看</a>
+        </div>
+      </div>
+
+      <dl class="mx-stats" data-mv-stats>
+        <div class="mx-stat">
+          <dt data-count="0.6" data-decimals="1" data-suffix=" s">0.6 s</dt>
+          <dd>启动到第一张图</dd>
+        </div>
+        <div class="mx-stat">
+          <dt data-count="410" data-suffix=" MP/s">410 MP/s</dt>
+          <dd>6 MP JPEG 解码吞吐</dd>
+        </div>
+        <div class="mx-stat">
+          <dt data-count="20" data-suffix="+">20+</dt>
+          <dd>内置可解码格式</dd>
+        </div>
+        <div class="mx-stat">
+          <dt data-count="1" data-suffix=" GiB">1 GiB</dt>
+          <dd>字节预算解码缓存</dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="mx-stage">
+      <div class="mx-stage__chrome">
+        <div class="mx-stage__dots" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="mx-stage__file">
+          <span class="mx-stage__path" data-mv-path>assets/demo</span>
+          <span class="mx-stage__count" data-mv-count>-- / --</span>
+        </div>
+        <div class="mx-toggle" role="group" aria-label="切换解码管线">
+          <button type="button" class="mx-toggle__btn is-active" data-mv-mode="fast">⚡ 闪电管线</button>
+          <button type="button" class="mx-toggle__btn" data-mv-mode="naive">🐌 朴素管线</button>
+        </div>
+      </div>
+
+      <div class="mx-viewport" data-mv-viewport tabindex="0" role="group"
+           aria-label="图片预览演示：方向键切换，滚轮缩放，拖拽平移">
+        <canvas data-mv-canvas></canvas>
+        <p class="mx-viewport__empty" data-mv-empty>正在准备演示图集…</p>
+        <div class="mx-spinner" data-mv-spinner hidden><span></span></div>
+
+        <div class="mx-hud mx-hud--tl">
+          <span class="mx-chip mx-chip--fmt" data-mv-format>--</span>
+          <span class="mx-chip" data-mv-dims>-- × --</span>
+          <span class="mx-chip mx-chip--ghost" data-mv-title>载入中</span>
+        </div>
+
+        <div class="mx-hud mx-hud--tr">
+          <div class="mx-latency" data-mv-latency>
+            <span class="mx-latency__value" data-mv-latency-value>--</span>
+            <span class="mx-latency__unit">ms</span>
+          </div>
+          <span class="mx-latency__badge" data-mv-badge>预热中</span>
+        </div>
+
+        <div class="mx-hud mx-hud--bl">
+          <div class="mx-pipe" data-mv-pipe>
+            <span class="mx-pipe__step" data-mv-step="read">读文件</span>
+            <span class="mx-pipe__step" data-mv-step="probe">探测</span>
+            <span class="mx-pipe__step" data-mv-step="decode">解码</span>
+            <span class="mx-pipe__step" data-mv-step="exif">EXIF</span>
+            <span class="mx-pipe__step" data-mv-step="resize">缩放</span>
+            <span class="mx-pipe__step" data-mv-step="present">上屏</span>
+          </div>
+        </div>
+
+        <div class="mx-hud mx-hud--br">
+          <span class="mx-zoom" data-mv-zoom>适应窗口</span>
+        </div>
+
+        <div class="mx-drop" data-mv-drop hidden>
+          <strong>松手即可预览</strong>
+          <span>用你自己的照片试试这 whip-through 的速度</span>
+        </div>
+      </div>
+
+      <div class="mx-strip" data-mv-strip aria-label="演示图集"></div>
+
+      <div class="mx-console">
+        <div class="mx-spark">
+          <span class="mx-spark__label">最近 48 次切换延迟</span>
+          <canvas data-mv-spark></canvas>
+        </div>
+        <div class="mx-meters">
+          <div class="mx-meter"><span class="mx-meter__k">缓存命中</span><span class="mx-meter__v" data-mv-hits>0</span></div>
+          <div class="mx-meter"><span class="mx-meter__k">未命中</span><span class="mx-meter__v" data-mv-misses>0</span></div>
+          <div class="mx-meter"><span class="mx-meter__k">平均延迟</span><span class="mx-meter__v" data-mv-avg>--</span></div>
+          <div class="mx-meter"><span class="mx-meter__k">缓存占用</span><span class="mx-meter__v" data-mv-bytes>0 B</span></div>
+        </div>
+      </div>
+
+      <div class="mx-stage__foot">
+        <p class="mx-hint">
+          <kbd>←</kbd><kbd>→</kbd> 切换
+          <span aria-hidden="true">·</span> 滚轮缩放
+          <span aria-hidden="true">·</span> 拖拽平移
+          <span aria-hidden="true">·</span> 双击适应 / 100%
+          <span aria-hidden="true">·</span>
+          <label class="mx-link">打开我的照片<input type="file" accept="image/*" multiple hidden data-mv-open></label>
+        </p>
+        <p class="mx-note">
+          演示台里跑的是<strong>真实解码</strong>：图片由 Web Worker 用
+          <code>createImageBitmap</code> 解出，毫秒数是这台机器上的实测值。
+          桌面端用同一套预取 + 字节预算缓存策略，
+          6 MP JPEG 全分辨率解码约 14.6 ms、约 410 MP/s。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,121 @@
+# MapleView 官网 —— MkDocs + Material，首页是一块自己写的交互式演示。
+#
+# 本地预览：
+#   python tools/gen_site_assets.py   # 生成演示图集与品牌资源（只需跑一次）
+#   mkdocs serve
+#
+# 构建：
+#   mkdocs build --strict
+
+site_name: MapleView
+site_description: 快如闪电的图片预览 —— 一个用 Rust 写的桌面图片查看器，20+ 格式、GPU 渲染、翻页零等待。
+site_url: https://terry-chao.github.io/MapleView/
+site_author: terry-chao
+copyright: MIT Licensed · MapleView
+
+repo_url: https://github.com/terry-chao/MapleView
+repo_name: terry-chao/MapleView
+edit_uri: ""
+
+docs_dir: docs
+site_dir: site
+use_directory_urls: true
+
+theme:
+  name: material
+  custom_dir: overrides
+  language: zh
+  logo: assets/brand/mark.svg
+  favicon: assets/brand/favicon.ico
+  # 不拉 Google Fonts：官网自己就该是快的，字体走系统栈。
+  font: false
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: 切换到浅色主题
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: 切换到深色主题
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.indexes
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+    - content.tooltips
+  icon:
+    repo: fontawesome/brands/github
+    logo: material/leaf
+
+extra_css:
+  - assets/stylesheets/mapleview.css
+
+extra_javascript:
+  - assets/javascripts/demo-corpus.js
+  - assets/javascripts/lightning.js
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/terry-chao/MapleView
+      name: 在 GitHub 上查看源码
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+plugins:
+  - search:
+      lang:
+        - zh
+        - en
+
+nav:
+  - 首页: index.md
+  - 快速开始: start.md
+  - 功能: features.md
+  - 支持格式: formats.md
+  - 命令行: cli.md
+  - 性能: performance.md
+  - 架构: architecture.md
+  - 路线图: roadmap.md

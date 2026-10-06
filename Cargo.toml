@@ -1,0 +1,31 @@
+[workspace]
+resolver = "3"
+members = ["crates/core", "crates/app", "crates/cli"]
+
+# Deliberately no `default-members`: narrowing it to `crates/app` would make
+# `cargo run` work, but it would also silently stop `cargo test` from running the
+# core test suite. An explicit `-p` flag is a much better failure mode.
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/terry-chao/MapleView"
+
+[workspace.dependencies]
+mapleview-core = { path = "crates/core" }
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+panic = "abort"
+strip = "symbols"
+
+# Debug builds of an image viewer are dominated by dependency code; keep them
+# fast enough to actually interact with, but do not cripple debug info.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 2
+

@@ -1,0 +1,21 @@
+[package]
+name = "mapleview-core"
+description = "Format detection, decoding, caching and navigation primitives for MapleView."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+crossbeam-channel = "0.5.17"
+fast_image_resize = { version = "6.1.0", features = ["image", "rayon"] }
+image = "0.25.10"
+kamadak-exif = "0.6.1"
+moka = { version = "0.12.16", features = ["sync"] }
+num_cpus = "1.17.0"
+thiserror = "2.0.21"
+tracing = "0.1.44"
+
+[dev-dependencies]
+tempfile = "3"
+

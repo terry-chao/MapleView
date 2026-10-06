@@ -1,0 +1,8 @@
+{#- 只改一件事：给首页插一块全宽的 Hero，其余页面完全走 Material 默认布局。 -#}
+{% extends "base.html" %}
+
+{% block hero %}
+  {% if page and page.is_homepage %}
+    {% include "partials/lightning-hero.html" %}
+  {% endif %}
+{% endblock %}

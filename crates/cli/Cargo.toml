@@ -1,0 +1,17 @@
+[package]
+name = "mapleview-cli"
+description = "Headless decode/thumbnail tooling for MapleView."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "mapleview-cli"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0.104"
+clap = { version = "4.6.7", features = ["derive"] }
+mapleview-core.workspace = true
+

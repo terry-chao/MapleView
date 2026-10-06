@@ -1,0 +1,23 @@
+[package]
+name = "mapleview-app"
+description = "MapleView desktop application."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "mapleview"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0.104"
+crossbeam-channel = "0.5.17"
+eframe = { version = "0.36.2", features = ["persistence"] }
+egui = "0.36.2"
+mapleview-core.workspace = true
+num_cpus = "1.17.0"
+rfd = "0.17.2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "tracing-log"] }
+
