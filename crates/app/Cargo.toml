@@ -13,7 +13,21 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1.0.104"
 crossbeam-channel = "0.5.17"
-eframe = { version = "0.36.2", features = ["persistence"] }
+# eframe's default feature set pulls in the `wgpu` backend, which enumerates
+# adapters and builds a device before the first frame. On Windows that is by far
+# the largest chunk of startup time, and it drags the whole GPU stack (and about
+# 5 MB) into the binary. The viewer only ever draws textured quads, so the glow
+# (OpenGL) backend brings the window up several times faster. The feature list
+# below is eframe's own default set with `wgpu` swapped for `glow`.
+eframe = { version = "0.36.2", default-features = false, features = [
+    "accesskit",
+    "default_fonts",
+    "glow",
+    "links",
+    "persistence",
+    "wayland",
+    "x11",
+] }
 egui = "0.36.2"
 mapleview-core.workspace = true
 num_cpus = "1.17.0"
