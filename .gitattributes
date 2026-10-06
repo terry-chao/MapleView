@@ -1,0 +1,5 @@
+# cmd.exe 是按字节偏移读批处理文件的，LF 行尾会让它截断并错读命令
+# （实测：'ocal' is not recognized、'跑：' is not recognized）。
+# 强制检出成 CRLF，这样不管克隆方的 core.autocrlf 怎么设，脚本都能跑。
+*.cmd text eol=crlf
+*.bat text eol=crlf
