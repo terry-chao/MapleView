@@ -2077,6 +2077,7 @@ dependencies = [
  "crossbeam-channel",
  "eframe",
  "egui",
+ "image",
  "mapleview-core",
  "num_cpus",
  "rfd",

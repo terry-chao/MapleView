@@ -35,3 +35,8 @@ rfd = "0.17.2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "tracing-log"] }
 
+[dev-dependencies]
+# The UI tests build decoded buffers by hand to check that the texture upload
+# copies the pixels it claims to; the path type itself is not enough.
+image = "0.25.10"
+

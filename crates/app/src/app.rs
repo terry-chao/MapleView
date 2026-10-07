@@ -28,6 +28,23 @@ const FULL_LEAVE: f32 = 0.70;
 /// Decoded-pixel budget. Roughly a quarter of a typical 4 GiB machine.
 const CACHE_BUDGET_BYTES: u64 = 1024 * 1024 * 1024;
 
+/// How much of the viewport, as a fraction of its own size, is uploaded *around*
+/// the visible pixels. The margin is what keeps a slow pan from re-uploading the
+/// texture on every frame.
+const REGION_MARGIN: f32 = 0.35;
+
+/// Source pixels the upload rectangle is quantised to. Rounding out to a block
+/// makes the sequence of rectangles during a pan finite instead of continuous.
+const REGION_BLOCK: u32 = 256;
+
+/// Above this fraction of the buffer, cropping costs more than it saves.
+const REGION_WHOLE_THRESHOLD: f32 = 0.9;
+
+/// How many images on either side of the current one to decode speculatively.
+/// People browse in runs, so spending two decodes on the image after next pays
+/// for itself the first time the arrow key is held down.
+const PREFETCH_RADIUS: usize = 2;
+
 /// Backdrop painted behind a photo. Kept dark so images read the same in a light
 /// or dark theme, but light enough to clearly not be a rendering failure.
 const VIEWER_BACKDROP: Color32 = Color32::from_gray(22);
@@ -48,6 +65,69 @@ struct Request {
     generation: u64,
     path: PathBuf,
     target: Option<(u32, u32)>,
+}
+
+/// The rectangle of the decoded buffer that currently lives in the GPU texture.
+///
+/// The preview tier uploads the whole buffer, because a preview is already the
+/// size of the window. The full resolution tier does not: at 100% zoom a 45 MP
+/// photo would otherwise become a 173 MB texture built on the UI thread, only
+/// for the canvas to show a couple of megapixels of it. Uploading the visible
+/// rectangle instead costs a few milliseconds and keeps the texture under the
+/// driver's maximum side, which an 8000-pixel-wide panorama is not.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Upload {
+    /// Size of the buffer this rectangle was cut from, so the rectangle can be
+    /// placed inside the destination of the whole image.
+    buffer: (u32, u32),
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+}
+
+impl Upload {
+    fn whole(buffer: (u32, u32)) -> Self {
+        Self {
+            buffer,
+            x: 0,
+            y: 0,
+            width: buffer.0.max(1),
+            height: buffer.1.max(1),
+        }
+    }
+
+    fn is_whole(&self) -> bool {
+        self.x == 0 && self.y == 0 && self.width == self.buffer.0 && self.height == self.buffer.1
+    }
+
+    /// Whether the texture already holds everything `other` needs.
+    fn covers(&self, other: &Self) -> bool {
+        self.buffer == other.buffer
+            && self.x <= other.x
+            && self.y <= other.y
+            && self.x + self.width >= other.x + other.width
+            && self.y + self.height >= other.y + other.height
+    }
+
+    /// Where this rectangle lands inside `image_rect`, which is where the whole
+    /// image would land.
+    fn destination(&self, image_rect: Rect) -> Rect {
+        let size = image_rect.size();
+        let at = |value: u32, total: u32| value as f32 / total.max(1) as f32;
+        Rect::from_min_max(
+            image_rect.min
+                + Vec2::new(
+                    size.x * at(self.x, self.buffer.0),
+                    size.y * at(self.y, self.buffer.1),
+                ),
+            image_rect.min
+                + Vec2::new(
+                    size.x * at(self.x + self.width, self.buffer.0),
+                    size.y * at(self.y + self.height, self.buffer.1),
+                ),
+        )
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -74,6 +154,8 @@ pub struct MapleView {
     displayed: Option<Arc<Decoded>>,
     texture: Option<TextureHandle>,
     texture_nearest: Option<bool>,
+    /// Which part of the displayed buffer the texture holds.
+    region: Option<Upload>,
     /// The brand mark, decoded once and reused by the welcome page and About.
     logo: Option<TextureHandle>,
 
@@ -116,6 +198,7 @@ impl MapleView {
             displayed: None,
             texture: None,
             texture_nearest: None,
+            region: None,
             logo: load_logo(&cc.egui_ctx),
             pending_open: None,
             request: None,
@@ -208,10 +291,9 @@ impl MapleView {
         let Some(navigator) = self.nav.as_ref() else {
             return;
         };
-        for path in navigator.neighbours(1) {
-            self.loader
-                .prefetch(path, DecodeHint::preview(self.preview_box));
-        }
+        let hint = DecodeHint::preview(self.preview_box);
+        self.loader
+            .prefetch(navigator.neighbours(PREFETCH_RADIUS).into_iter().map(|path| (path, hint)));
     }
 
     fn drain_results(&mut self, ctx: &egui::Context) {
@@ -231,7 +313,8 @@ impl MapleView {
         match outcome.result {
             Ok(decoded) => {
                 let nearest = self.scale >= 1.0;
-                self.upload(ctx, &decoded, nearest);
+                let region = self.needed_upload(&decoded);
+                self.upload(ctx, &decoded, nearest, region);
                 self.displayed = Some(decoded);
                 self.message = None;
                 self.prefetch_neighbours();
@@ -240,6 +323,7 @@ impl MapleView {
                 self.displayed = None;
                 self.texture = None;
                 self.texture_nearest = None;
+                self.region = None;
                 self.message = Some(Message::error(format!(
                     "{}: {error}",
                     outcome.path.display()
@@ -248,12 +332,29 @@ impl MapleView {
         }
     }
 
-    fn upload(&mut self, ctx: &egui::Context, decoded: &Arc<Decoded>, nearest: bool) {
-        let size = [
-            decoded.image.width() as usize,
-            decoded.image.height() as usize,
-        ];
-        let image = ColorImage::from_rgba_unmultiplied(size, decoded.image.as_raw());
+    /// The part of `decoded` the canvas can show, rounded out to a whole block
+    /// plus a margin so that walking around a zoomed image re-uploads rarely.
+    fn needed_upload(&self, decoded: &Decoded) -> Upload {
+        visible_region(
+            self.canvas,
+            self.canvas_ppp,
+            &self.view,
+            source_size(decoded),
+            (
+                decoded.image.width().max(1),
+                decoded.image.height().max(1),
+            ),
+        )
+    }
+
+    fn upload(
+        &mut self,
+        ctx: &egui::Context,
+        decoded: &Arc<Decoded>,
+        nearest: bool,
+        region: Upload,
+    ) {
+        let image = region_image(decoded, &region);
         let options = if nearest {
             TextureOptions::NEAREST
         } else {
@@ -265,6 +366,7 @@ impl MapleView {
             None => self.texture = Some(ctx.load_texture("mapleview.image", image, options)),
         }
         self.texture_nearest = Some(nearest);
+        self.region = Some(region);
     }
 
     // ------------------------------------------------------------------- view
@@ -705,17 +807,20 @@ impl MapleView {
         self.scale = self.view.scale(rect, source, ppp);
 
         let nearest = self.scale >= 1.0;
-        if self.texture_nearest != Some(nearest) {
-            self.upload(ctx, &decoded, nearest);
+        let needed = self.needed_upload(&decoded);
+        let stale = self.texture_nearest != Some(nearest)
+            || self.region.is_none_or(|region| !region.covers(&needed));
+        if stale {
+            self.upload(ctx, &decoded, nearest, needed);
         }
 
         self.sync_quality(&decoded, ppp);
 
         let image_rect = self.view.image_rect(rect, source, ppp);
-        if let Some(texture) = self.texture.as_ref() {
+        if let (Some(texture), Some(region)) = (self.texture.as_ref(), self.region) {
             ui.painter().image(
                 texture.id(),
-                image_rect,
+                region.destination(image_rect),
                 Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
                 Color32::WHITE,
             );
@@ -999,6 +1104,105 @@ fn row(ui: &mut egui::Ui, name: &str, value: &str) {
     ui.end_row();
 }
 
+/// Rounds `value` down to a multiple of [`REGION_BLOCK`], clamped to `0..=limit`.
+fn region_floor(value: f32, limit: u32) -> u32 {
+    let block = REGION_BLOCK as f32;
+    let rounded = (value.max(0.0) / block).floor() * block;
+    (rounded as u32).min(limit)
+}
+
+/// Rounds `value` up to a multiple of [`REGION_BLOCK`], clamped to `0..=limit`.
+fn region_ceil(value: f32, limit: u32) -> u32 {
+    let block = REGION_BLOCK as f32;
+    let rounded = (value.max(0.0) / block).ceil() * block;
+    (rounded as u32).min(limit)
+}
+
+/// The rectangle of `buffer` that the canvas can show right now.
+///
+/// `source` is the image size the view geometry works in, which is the *stored*
+/// size even when `buffer` is a downscaled preview of it. The result is always
+/// inside the buffer, always at least one pixel, and aligned to
+/// [`REGION_BLOCK`] so that a slow pan produces a finite sequence of uploads.
+fn visible_region(
+    canvas: Rect,
+    ppp: f32,
+    view: &ViewState,
+    source: Vec2,
+    buffer: (u32, u32),
+) -> Upload {
+    let whole = Upload::whole(buffer);
+    let image_rect = view.image_rect(canvas, source, ppp);
+    if canvas.width() < 1.0
+        || canvas.height() < 1.0
+        || image_rect.width() < 1.0
+        || image_rect.height() < 1.0
+    {
+        return whole;
+    }
+
+    let visible = image_rect.intersect(canvas);
+    if visible.width() < 1.0 || visible.height() < 1.0 {
+        return whole;
+    }
+
+    // Everything below is in buffer pixels rather than screen points.
+    let to_buffer_x = buffer.0 as f32 / image_rect.width();
+    let to_buffer_y = buffer.1 as f32 / image_rect.height();
+    let left = (visible.min.x - image_rect.min.x) * to_buffer_x;
+    let right = (visible.max.x - image_rect.min.x) * to_buffer_x;
+    let top = (visible.min.y - image_rect.min.y) * to_buffer_y;
+    let bottom = (visible.max.y - image_rect.min.y) * to_buffer_y;
+
+    let margin_x = (right - left) * REGION_MARGIN;
+    let margin_y = (bottom - top) * REGION_MARGIN;
+    let x0 = region_floor(left - margin_x, buffer.0.saturating_sub(1));
+    let y0 = region_floor(top - margin_y, buffer.1.saturating_sub(1));
+    let x1 = region_ceil(right + margin_x, buffer.0);
+    let y1 = region_ceil(bottom + margin_y, buffer.1);
+    let crop = Upload {
+        buffer,
+        x: x0,
+        y: y0,
+        width: x1.saturating_sub(x0).max(1),
+        height: y1.saturating_sub(y0).max(1),
+    };
+
+    let covered =
+        (crop.width as f32 * crop.height as f32) / (buffer.0 as f32 * buffer.1 as f32);
+    if covered > REGION_WHOLE_THRESHOLD {
+        whole
+    } else {
+        crop
+    }
+}
+
+/// Copies the uploaded rectangle out of a decoded buffer, ready for the GPU.
+///
+/// The whole-buffer case is the common one (every preview) and borrows the
+/// decoded pixels directly; only the cropped full-resolution case pays a copy,
+/// and it pays it on a couple of megapixels instead of forty-five.
+fn region_image(decoded: &Decoded, region: &Upload) -> ColorImage {
+    let size = [region.width as usize, region.height as usize];
+    if region.is_whole() {
+        return ColorImage::from_rgba_unmultiplied(size, decoded.image.as_raw());
+    }
+
+    let raw = decoded.image.as_raw();
+    let stride = region.width as usize * 4;
+    let row_bytes = decoded.image.width() as usize * 4;
+    let mut pixels = Vec::with_capacity(size[0] * size[1]);
+    for y in region.y..region.y + region.height {
+        let start = y as usize * row_bytes + region.x as usize * 4;
+        pixels.extend(
+            raw[start..start + stride]
+                .chunks_exact(4)
+                .map(|p| Color32::from_rgba_unmultiplied(p[0], p[1], p[2], p[3])),
+        );
+    }
+    ColorImage::new(size, pixels)
+}
+
 /// Decodes the embedded brand mark into a texture for the welcome page and the
 /// About dialog. This runs once, at startup.
 fn load_logo(ctx: &egui::Context) -> Option<TextureHandle> {
@@ -1133,5 +1337,202 @@ mod tests {
             (middle - centre).abs() <= 1.0,
             "button row centres at {middle}, but the card centres at {centre}"
         );
+    }
+
+    /// A photo far larger than the window, which is the case the region upload
+    /// exists for.
+    fn photo() -> (Vec2, (u32, u32)) {
+        (Vec2::new(8256.0, 5504.0), (8256, 5504))
+    }
+
+    fn canvas() -> Rect {
+        Rect::from_min_size(Pos2::ZERO, Vec2::new(1280.0, 800.0))
+    }
+
+    #[test]
+    fn a_zoomed_photo_uploads_a_window_instead_of_the_whole_buffer() {
+        let (source, buffer) = photo();
+        let view = ViewState {
+            mode: FitMode::Free,
+            zoom: 1.0,
+            offset: Vec2::ZERO,
+        };
+
+        let region = visible_region(canvas(), 1.0, &view, source, buffer);
+
+        let whole = buffer.0 as f32 * buffer.1 as f32;
+        let uploaded = region.width as f32 * region.height as f32;
+        assert!(
+            uploaded < whole / 8.0,
+            "uploaded {uploaded} of {whole} pixels, which is not a window"
+        );
+        assert_eq!(region.buffer, buffer);
+        assert_eq!(region.x % REGION_BLOCK, 0);
+        assert_eq!(region.y % REGION_BLOCK, 0);
+        assert!(region.x + region.width <= buffer.0);
+        assert!(region.y + region.height <= buffer.1);
+
+        // The middle of the photo is on screen, so it has to be in the upload.
+        assert!(region.x <= buffer.0 / 2 && region.x + region.width >= buffer.0 / 2);
+        assert!(region.y <= buffer.1 / 2 && region.y + region.height >= buffer.1 / 2);
+    }
+
+    #[test]
+    fn a_fitting_image_still_uploads_the_whole_buffer() {
+        let (source, _) = photo();
+        let view = ViewState::default();
+        // A preview of the same photo: smaller than the window once fitted.
+        let region = visible_region(canvas(), 1.0, &view, source, (2048, 1365));
+        assert_eq!(region, Upload::whole((2048, 1365)));
+    }
+
+    #[test]
+    fn panning_a_little_reuses_the_upload_but_panning_a_lot_does_not() {
+        let (source, buffer) = photo();
+        let view = ViewState {
+            mode: FitMode::Free,
+            zoom: 1.0,
+            offset: Vec2::ZERO,
+        };
+        let first = visible_region(canvas(), 1.0, &view, source, buffer);
+
+        let nudged = ViewState {
+            offset: Vec2::new(30.0, 20.0),
+            ..view
+        };
+        assert!(
+            first.covers(&visible_region(canvas(), 1.0, &nudged, source, buffer)),
+            "a nudge smaller than the margin must not cost a texture upload"
+        );
+
+        let jumped = ViewState {
+            offset: Vec2::new(canvas().width(), 0.0),
+            ..view
+        };
+        assert!(
+            !first.covers(&visible_region(canvas(), 1.0, &jumped, source, buffer)),
+            "moving a whole screen must bring new pixels in"
+        );
+    }
+
+    #[test]
+    fn a_cropped_texture_lands_where_it_was_cut_from() {
+        let image_rect = Rect::from_min_size(Pos2::ZERO, Vec2::new(1000.0, 500.0));
+        let region = Upload {
+            buffer: (100, 100),
+            x: 25,
+            y: 50,
+            width: 50,
+            height: 50,
+        };
+        let destination = region.destination(image_rect);
+        assert_eq!(destination.min, Pos2::new(250.0, 250.0));
+        assert_eq!(destination.max, Pos2::new(750.0, 500.0));
+    }
+
+    #[test]
+    fn a_whole_upload_still_covers_the_whole_image_rect() {
+        let image_rect = Rect::from_min_size(Pos2::new(10.0, 20.0), Vec2::new(800.0, 600.0));
+        let region = Upload::whole((2000, 1500));
+        assert_eq!(region.destination(image_rect), image_rect);
+    }
+
+    #[test]
+    fn covers_is_containment_rather_than_overlap() {
+        let texture = Upload {
+            buffer: (100, 100),
+            x: 0,
+            y: 0,
+            width: 50,
+            height: 50,
+        };
+        let inside = Upload {
+            width: 10,
+            height: 10,
+            ..texture
+        };
+        let overlapping = Upload {
+            x: 40,
+            y: 40,
+            width: 20,
+            height: 20,
+            ..texture
+        };
+        assert!(texture.covers(&inside));
+        assert!(!texture.covers(&overlapping));
+        assert!(
+            !Upload {
+                buffer: (200, 200),
+                ..texture
+            }
+            .covers(&texture),
+            "a texture cut from a different buffer is never a hit"
+        );
+    }
+
+    /// A decoded buffer whose every pixel says where it came from.
+    fn decoded_pattern(width: u32, height: u32) -> Decoded {
+        let image = image::RgbaImage::from_fn(width, height, |x, y| {
+            image::Rgba([x as u8, y as u8, 200, 255])
+        });
+        Decoded {
+            image,
+            meta: mapleview_core::ImageMeta {
+                path: PathBuf::from("pattern.png"),
+                format: mapleview_core::Format::Png,
+                file_size: 0,
+                width,
+                height,
+                raw_width: width,
+                raw_height: height,
+                orientation: mapleview_core::Orientation::NoTransforms,
+                decode_ms: 0,
+                target: None,
+                resized: false,
+                exif: Vec::new(),
+            },
+        }
+    }
+
+    #[test]
+    fn a_cropped_texture_carries_the_pixels_it_was_cut_from() {
+        let decoded = decoded_pattern(64, 32);
+        let region = Upload {
+            buffer: (64, 32),
+            x: 8,
+            y: 4,
+            width: 16,
+            height: 8,
+        };
+
+        let image = region_image(&decoded, &region);
+
+        assert_eq!(image.size, [16, 8]);
+        for y in 0..8 {
+            for x in 0..16 {
+                let expected = Color32::from_rgba_unmultiplied(
+                    (x + 8) as u8,
+                    (y + 4) as u8,
+                    200,
+                    255,
+                );
+                assert_eq!(
+                    image.pixels[y * 16 + x],
+                    expected,
+                    "pixel ({x}, {y}) of the crop is wrong"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_whole_texture_is_the_buffer_untouched() {
+        let decoded = decoded_pattern(8, 4);
+        let image = region_image(&decoded, &Upload::whole((8, 4)));
+
+        assert_eq!(image.size, [8, 4]);
+        assert_eq!(image.pixels.len(), 32);
+        assert_eq!(image.pixels[0], Color32::from_rgba_unmultiplied(0, 0, 200, 255));
+        assert_eq!(image.pixels[31], Color32::from_rgba_unmultiplied(7, 3, 200, 255));
     }
 }

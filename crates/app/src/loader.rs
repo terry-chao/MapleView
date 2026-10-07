@@ -5,7 +5,7 @@
 //! * **Cancellation.** Every visible request bumps a generation counter. A worker
 //!   that finishes decoding a frame the user has already navigated away from
 //!   throws the result away instead of uploading it.
-//! * **Prefetch.** Neighbours are decoded into the cache on a separate thread, so
+//! * **Prefetch.** Neighbours are decoded into the cache on separate threads, so
 //!   they never queue behind the image the user is actually waiting for.
 
 use std::path::PathBuf;
@@ -21,6 +21,12 @@ pub type Waker = Arc<dyn Fn() + Send + Sync>;
 
 /// How many images a single user action may keep decoding at once.
 const MAX_WORKERS: usize = 6;
+
+/// Speculative decodes get their own threads so that they can never queue in
+/// front of the image the user is waiting for. One thread is not enough to stay
+/// ahead of someone holding the arrow key down: a phone photo costs a quarter of
+/// a second to decode, and every jump invalidates the guesses.
+const PREFETCH_WORKERS: usize = 2;
 
 enum Job {
     /// A request the user is waiting for; reports back and is cancellable.
@@ -43,6 +49,9 @@ pub struct Outcome {
 pub struct Loader {
     jobs: Sender<Job>,
     prefetches: Sender<Job>,
+    /// A second handle on the prefetch queue, used to drop guesses that a newer
+    /// position has made pointless.
+    pending: Receiver<Job>,
     results: Receiver<Outcome>,
     generation: Arc<AtomicU64>,
     workers: Vec<JoinHandle<()>>,
@@ -55,7 +64,7 @@ impl Loader {
         let (result_tx, result_rx) = unbounded();
         let generation = Arc::new(AtomicU64::new(0));
 
-        let mut workers = Vec::with_capacity(worker_count() + 1);
+        let mut workers = Vec::with_capacity(worker_count() + PREFETCH_WORKERS);
         for index in 0..worker_count() {
             workers.push(spawn_worker(
                 format!("mapleview-decode-{index}"),
@@ -66,18 +75,21 @@ impl Loader {
                 Arc::clone(&waker),
             ));
         }
-        workers.push(spawn_worker(
-            "mapleview-prefetch".to_owned(),
-            prefetch_rx,
-            result_tx,
-            cache,
-            Arc::clone(&generation),
-            waker,
-        ));
+        for index in 0..PREFETCH_WORKERS {
+            workers.push(spawn_worker(
+                format!("mapleview-prefetch-{index}"),
+                prefetch_rx.clone(),
+                result_tx.clone(),
+                cache.clone(),
+                Arc::clone(&generation),
+                Arc::clone(&waker),
+            ));
+        }
 
         Self {
             jobs: job_tx,
             prefetches: prefetch_tx,
+            pending: prefetch_rx,
             results: result_rx,
             generation,
             workers,
@@ -95,9 +107,15 @@ impl Loader {
         generation
     }
 
-    /// Queues a speculative decode that only warms the cache.
-    pub fn prefetch(&self, path: PathBuf, hint: DecodeHint) {
-        let _ = self.prefetches.send(Job::Prefetch { path, hint });
+    /// Replaces the speculative queue with `jobs`, which only warm the cache.
+    ///
+    /// Replacing rather than appending is what keeps a burst of navigation from
+    /// building a backlog of guesses about places the user has already left.
+    pub fn prefetch(&self, jobs: impl IntoIterator<Item = (PathBuf, DecodeHint)>) {
+        while self.pending.try_recv().is_ok() {}
+        for (path, hint) in jobs {
+            let _ = self.prefetches.send(Job::Prefetch { path, hint });
+        }
     }
 
     pub fn poll(&self) -> Option<Outcome> {
