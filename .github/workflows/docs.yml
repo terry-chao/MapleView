@@ -11,11 +11,21 @@ on:
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
+# Pages 的发布源必须是 "GitHub Actions"（Settings → Pages → Build and
+# deployment → Source）。推 gh-pages 分支的老做法不会生效：仓库里
+# has_pages 是 true 却一条部署记录都没有，站点就一直 404。
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+# 同时只跑一个发布，排队中的构建让位给最新的推送
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,4 +46,21 @@ jobs:
 
       # docs/assets/demo 里的演示图集是提交进仓库的，
       # CI 不需要跑 tools/gen_site_assets.py（它只是用来重新生成这些图）。
-      - run: mkdocs gh-deploy --force
+      # 本地跑 mkdocs serve 时也一样可以直接构建。
+      - run: mkdocs build --strict
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
