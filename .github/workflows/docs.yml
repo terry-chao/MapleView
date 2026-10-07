@@ -8,6 +8,7 @@ on:
       - "overrides/**"
       - "mkdocs.yml"
       - "tools/gen_site_assets.py"
+      - "tools/fetch_demo_photos.py"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
