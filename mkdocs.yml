@@ -1,7 +1,8 @@
 # 枫阅 官网 —— MkDocs + Material，首页是一块自己写的交互式演示。
 #
 # 本地预览：
-#   python tools/gen_site_assets.py   # 生成演示图集与品牌资源（只需跑一次）
+#   python tools/gen_site_assets.py     # 生成品牌资源（不联网）
+#   python tools/fetch_demo_photos.py   # 抓取演示图集（联网，只需跑一次）
 #   mkdocs serve
 #
 # 构建：
@@ -118,4 +119,4 @@ nav:
   - 命令行: cli.md
   - 性能: performance.md
   - 架构: architecture.md
-  - 路线图: roadmap.md
+  - 图片来源: credits.md
