@@ -1,0 +1,994 @@
+/* ==========================================================================
+   MapleView 官网
+   --------------------------------------------------------------------------
+   1. 设计变量与 Material 主题对接
+   2. 首页 Hero + 演示台
+   3. 正文区块（卡片 / 指标 / 格式 / 时间线）
+   4. 响应式与动效偏好
+   ========================================================================== */
+
+/* 1 -------------------------------------------------------------- 设计变量 */
+
+:root {
+  --mx-amber: #f7b24b;
+  --mx-orange: #e4572e;
+  --mx-red: #b3322a;
+  --mx-fg: #f4efea;
+  --mx-muted: #a99f98;
+  --mx-line: rgba(255, 255, 255, 0.1);
+  --mx-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", "Cascadia Mono",
+    Consolas, "Liberation Mono", monospace;
+  --mx-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, Helvetica,
+    Arial, sans-serif;
+}
+
+/* Material 的 primary/accent 设成了 custom，这里把两套配色都补齐。 */
+[data-md-color-primary="custom"] {
+  --md-primary-fg-color: #14101a;
+  --md-primary-fg-color--light: #241a2c;
+  --md-primary-fg-color--dark: #0a0810;
+  --md-primary-bg-color: var(--mx-fg);
+  --md-primary-bg-color--light: rgba(244, 239, 234, 0.7);
+}
+
+[data-md-color-accent="custom"] {
+  --md-accent-fg-color: var(--mx-orange);
+  --md-accent-fg-color--transparent: rgba(228, 87, 46, 0.12);
+  --md-accent-bg-color: #ffffff;
+  --md-accent-bg-color--light: rgba(255, 255, 255, 0.7);
+}
+
+body {
+  font-family: var(--mx-sans);
+}
+
+.md-typeset code,
+.md-typeset pre > code,
+.md-typeset kbd {
+  font-family: var(--mx-mono);
+}
+
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #0f0c14;
+  --md-code-bg-color: rgba(255, 255, 255, 0.05);
+}
+
+/* 2 ------------------------------------------------------------------ Hero */
+
+.mx-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  /* overflow: clip 不建立滚动容器，内部元素（比如溢出的辉光）
+     就没法把整个 Hero 程序化地滚走。旧浏览器会保留上一行的 hidden。 */
+  overflow: clip;
+  padding: clamp(2.4rem, 5vw, 4.6rem) 0 clamp(2.6rem, 6vw, 5rem);
+  background:
+    radial-gradient(120% 90% at 78% -10%, rgba(228, 87, 46, 0.22), transparent 60%),
+    radial-gradient(90% 70% at 8% 0%, rgba(247, 178, 75, 0.14), transparent 62%),
+    linear-gradient(180deg, #0a0810 0%, #110d18 46%, #0d0a13 100%);
+  color: var(--mx-fg);
+}
+
+.mx-hero__bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.mx-hero__grid {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(120% 80% at 50% 0%, #000 0%, transparent 72%);
+  -webkit-mask-image: radial-gradient(120% 80% at 50% 0%, #000 0%, transparent 72%);
+  opacity: 0.55;
+}
+
+.mx-hero__glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.5;
+}
+
+.mx-hero__glow--a {
+  width: 34rem;
+  height: 34rem;
+  right: -8rem;
+  top: -12rem;
+  background: radial-gradient(circle, rgba(228, 87, 46, 0.7), transparent 68%);
+}
+
+.mx-hero__glow--b {
+  width: 26rem;
+  height: 26rem;
+  left: -10rem;
+  bottom: -12rem;
+  background: radial-gradient(circle, rgba(247, 178, 75, 0.42), transparent 70%);
+}
+
+.mx-hero__inner {
+  /* 用 px 而不是 rem：Material 会把 html 的 font-size 改成 125%，
+     用 rem 写容器宽度会随用户字号放大到超出视口。 */
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.mx-hero__top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: clamp(1.4rem, 3vw, 3rem);
+  align-items: end;
+  margin-bottom: clamp(1.6rem, 3.4vw, 2.8rem);
+}
+
+.mx-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  margin: 0 0 0.9rem;
+  padding: 0.35em 0.85em;
+  border: 1px solid var(--mx-line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mx-muted);
+}
+
+.mx-pulse {
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 50%;
+  background: var(--mx-amber);
+  box-shadow: 0 0 0 0 rgba(247, 178, 75, 0.6);
+  animation: mx-pulse 2.4s ease-out infinite;
+}
+
+@keyframes mx-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(247, 178, 75, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 0.7rem rgba(247, 178, 75, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(247, 178, 75, 0);
+  }
+}
+
+.mx-title {
+  margin: 0;
+  font-size: clamp(2.5rem, 6.4vw, 4.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  font-weight: 800;
+}
+
+.mx-title em {
+  font-style: normal;
+  background: linear-gradient(100deg, var(--mx-amber), var(--mx-orange) 46%, #ff7a4d);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.mx-lede {
+  max-width: 34rem;
+  margin: 1.1rem 0 0;
+  font-size: clamp(0.95rem, 1.35vw, 1.08rem);
+  line-height: 1.75;
+  color: var(--mx-muted);
+}
+
+.mx-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 1.5rem;
+}
+
+.mx-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.72em 1.3em;
+  border: 1px solid var(--md-default-fg-color--lighter);
+  border-radius: 999px;
+  background: var(--md-code-bg-color);
+  color: var(--md-default-fg-color) !important;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.mx-btn:hover {
+  transform: translateY(-2px);
+  border-color: var(--md-accent-fg-color);
+}
+
+/* Hero 永远是深色底，所以按钮在里面单独配色，不跟主题走。 */
+.mx-hero .mx-btn {
+  border-color: var(--mx-line);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--mx-fg) !important;
+}
+
+.mx-hero .mx-btn:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.mx-btn--primary {
+  border-color: transparent;
+  background: linear-gradient(120deg, var(--mx-amber), var(--mx-orange));
+  color: #1a0d06 !important;
+  box-shadow: 0 12px 30px -14px rgba(228, 87, 46, 0.9);
+}
+
+.mx-btn--primary:hover {
+  border-color: transparent;
+  background: linear-gradient(120deg, var(--mx-amber), var(--mx-orange));
+}
+
+.mx-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin: 0;
+}
+
+.mx-stat {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--mx-line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+}
+
+.mx-stat dt {
+  font-family: var(--mx-mono);
+  font-size: 1.32rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--mx-amber);
+}
+
+.mx-stat dd {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--mx-muted);
+}
+
+/* 3 ------------------------------------------------------------- 演示台 */
+
+.mx-stage {
+  position: relative;
+  border: 1px solid var(--mx-line);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015));
+  box-shadow: 0 40px 90px -50px rgba(0, 0, 0, 0.95);
+  overflow: hidden;
+  backdrop-filter: blur(6px);
+}
+
+.mx-stage__chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--mx-line);
+}
+
+.mx-stage__dots {
+  display: flex;
+  gap: 0.4rem;
+  flex: none;
+}
+
+.mx-stage__dots i {
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.mx-stage__dots i:first-child {
+  background: rgba(228, 87, 46, 0.75);
+}
+
+.mx-stage__dots i:nth-child(2) {
+  background: rgba(247, 178, 75, 0.75);
+}
+
+.mx-stage__dots i:last-child {
+  background: rgba(120, 200, 140, 0.7);
+}
+
+.mx-stage__file {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  font-family: var(--mx-mono);
+  font-size: 0.76rem;
+  color: var(--mx-muted);
+}
+
+.mx-stage__path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mx-stage__count {
+  flex: none;
+  padding: 0.1em 0.55em;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--mx-fg);
+}
+
+.mx-toggle {
+  display: flex;
+  gap: 0.2rem;
+  margin-left: auto;
+  padding: 0.2rem;
+  border: 1px solid var(--mx-line);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  flex: none;
+}
+
+.mx-toggle__btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.42em 0.9em;
+  background: transparent;
+  color: var(--mx-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease;
+  white-space: nowrap;
+}
+
+.mx-toggle__btn:hover {
+  color: var(--mx-fg);
+}
+
+.mx-toggle__btn.is-active {
+  background: linear-gradient(120deg, var(--mx-amber), var(--mx-orange));
+  color: #1a0d06;
+}
+
+.mx-viewport {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background:
+    radial-gradient(80% 80% at 50% 40%, #191422, #0a0810 70%);
+  overflow: hidden;
+  cursor: grab;
+  outline: none;
+  /* 允许竖屏手势翻页，但横向拖拽留给平移。 */
+  touch-action: pan-y;
+}
+
+.mx-viewport:active {
+  cursor: grabbing;
+}
+
+.mx-viewport:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--mx-orange);
+}
+
+.mx-viewport canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.mx-viewport.has-frame canvas {
+  opacity: 1;
+}
+
+.mx-viewport.is-naive.has-frame canvas {
+  animation: mx-fade 0.34s ease;
+}
+
+@keyframes mx-fade {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.mx-viewport__empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  font-size: 0.85rem;
+  color: var(--mx-muted);
+  letter-spacing: 0.04em;
+}
+
+.mx-viewport.has-frame .mx-viewport__empty {
+  display: none;
+}
+
+.mx-spinner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  background: rgba(10, 8, 16, 0.35);
+  backdrop-filter: blur(2px);
+}
+
+.mx-spinner[hidden] {
+  display: none;
+}
+
+.mx-spinner span {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  border-top-color: var(--mx-amber);
+  animation: mx-spin 0.8s linear infinite;
+}
+
+@keyframes mx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mx-hud {
+  position: absolute;
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-start;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.mx-hud--tl {
+  top: 0.8rem;
+  left: 0.8rem;
+  flex-wrap: wrap;
+  max-width: 60%;
+}
+
+.mx-hud--tr {
+  top: 0.8rem;
+  right: 0.8rem;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.mx-hud--bl {
+  bottom: 0.8rem;
+  left: 0.8rem;
+}
+
+.mx-hud--br {
+  bottom: 0.8rem;
+  right: 0.8rem;
+}
+
+.mx-chip {
+  padding: 0.28em 0.68em;
+  border: 1px solid var(--mx-line);
+  border-radius: 999px;
+  background: rgba(10, 8, 16, 0.62);
+  backdrop-filter: blur(8px);
+  font-family: var(--mx-mono);
+  font-size: 0.7rem;
+  color: var(--mx-fg);
+  white-space: nowrap;
+}
+
+.mx-chip--fmt {
+  border-color: rgba(247, 178, 75, 0.45);
+  color: var(--mx-amber);
+}
+
+.mx-chip--ghost {
+  background: rgba(10, 8, 16, 0.45);
+  color: var(--mx-muted);
+}
+
+.mx-latency {
+  display: flex;
+  align-items: baseline;
+  gap: 0.24em;
+  padding: 0.34rem 0.7rem;
+  border: 1px solid var(--mx-line);
+  border-radius: 12px;
+  background: rgba(10, 8, 16, 0.65);
+  backdrop-filter: blur(8px);
+  font-family: var(--mx-mono);
+}
+
+.mx-latency__value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--mx-amber);
+  transition: color 0.2s ease;
+}
+
+.mx-latency__unit {
+  font-size: 0.72rem;
+  color: var(--mx-muted);
+}
+
+.mx-latency.is-hit .mx-latency__value {
+  color: #7fe0a3;
+}
+
+.mx-latency__badge {
+  margin-top: 0.35rem;
+  padding: 0.2em 0.6em;
+  border-radius: 999px;
+  background: rgba(127, 224, 163, 0.14);
+  color: #7fe0a3;
+  font-family: var(--mx-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.mx-latency__badge.is-miss {
+  background: rgba(228, 87, 46, 0.16);
+  color: #ff9a6e;
+}
+
+.mx-latency__badge.is-cancel {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--mx-muted);
+}
+
+.mx-pipe {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.mx-pipe__step {
+  position: relative;
+  padding: 0.24em 0.6em;
+  border: 1px solid var(--mx-line);
+  border-radius: 999px;
+  background: rgba(10, 8, 16, 0.6);
+  backdrop-filter: blur(8px);
+  font-family: var(--mx-mono);
+  font-size: 0.66rem;
+  color: var(--mx-muted);
+  transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.mx-pipe__step:not(:last-child)::after {
+  content: "›";
+  margin-left: 0.55em;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.mx-pipe__step.is-on {
+  border-color: rgba(247, 178, 75, 0.5);
+  background: rgba(228, 87, 46, 0.2);
+  color: var(--mx-fg);
+}
+
+.mx-zoom {
+  padding: 0.28em 0.7em;
+  border: 1px solid var(--mx-line);
+  border-radius: 999px;
+  background: rgba(10, 8, 16, 0.62);
+  backdrop-filter: blur(8px);
+  font-family: var(--mx-mono);
+  font-size: 0.7rem;
+  color: var(--mx-muted);
+}
+
+.mx-drop {
+  position: absolute;
+  inset: 0.7rem;
+  z-index: 4;
+  display: grid;
+  place-content: center;
+  gap: 0.35rem;
+  border: 2px dashed rgba(247, 178, 75, 0.7);
+  border-radius: 14px;
+  background: rgba(10, 8, 16, 0.82);
+  text-align: center;
+  pointer-events: none;
+}
+
+.mx-drop[hidden] {
+  display: none;
+}
+
+.mx-drop strong {
+  font-size: 1.05rem;
+  color: var(--mx-amber);
+}
+
+.mx-drop span {
+  font-size: 0.8rem;
+  color: var(--mx-muted);
+}
+
+.mx-strip {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  border-top: 1px solid var(--mx-line);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scroll-snap-type: x proximity;
+}
+
+.mx-thumb {
+  position: relative;
+  flex: none;
+  width: 7.4rem;
+  aspect-ratio: 3 / 2;
+  padding: 0;
+  border: 1px solid var(--mx-line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  cursor: pointer;
+  scroll-snap-align: center;
+  transition: transform 0.16s ease, border-color 0.16s ease;
+}
+
+.mx-thumb canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.mx-thumb.is-ready canvas {
+  opacity: 1;
+}
+
+.mx-thumb.is-current {
+  border-color: var(--mx-amber);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px -14px rgba(247, 178, 75, 0.9);
+}
+
+.mx-thumb__fmt {
+  position: absolute;
+  right: 0.3rem;
+  bottom: 0.3rem;
+  padding: 0.05em 0.4em;
+  border-radius: 999px;
+  background: rgba(10, 8, 16, 0.75);
+  font-family: var(--mx-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.04em;
+  color: var(--mx-muted);
+}
+
+.mx-console {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 1rem;
+  padding: 0.85rem 0.9rem;
+  border-top: 1px solid var(--mx-line);
+  align-items: center;
+}
+
+.mx-spark {
+  position: relative;
+  height: 62px;
+}
+
+.mx-spark canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.mx-spark__label {
+  position: absolute;
+  left: 0.1rem;
+  top: 0;
+  font-family: var(--mx-mono);
+  font-size: 0.62rem;
+  color: var(--mx-muted);
+  letter-spacing: 0.03em;
+}
+
+.mx-meters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.mx-meter {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--mx-line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.mx-meter__k {
+  display: block;
+  font-size: 0.66rem;
+  color: var(--mx-muted);
+}
+
+.mx-meter__v {
+  display: block;
+  margin-top: 0.1rem;
+  font-family: var(--mx-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--mx-fg);
+}
+
+.mx-stage__foot {
+  padding: 0.85rem 0.9rem 1rem;
+  border-top: 1px solid var(--mx-line);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.mx-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--mx-muted);
+}
+
+.mx-hint kbd {
+  padding: 0.1em 0.42em;
+  border: 1px solid var(--mx-line);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.72rem;
+  color: var(--mx-fg);
+}
+
+.mx-link {
+  color: var(--mx-amber);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.mx-link input[type="file"] {
+  display: none;
+}
+
+.mx-note {
+  margin: 0.6rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.6;
+  color: rgba(169, 159, 152, 0.85);
+}
+
+.mx-note code {
+  padding: 0.05em 0.35em;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 0.95em;
+}
+
+/* 4 -------------------------------------------------------- 正文区块 */
+
+.mx-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.9rem;
+  margin: 1.4rem 0;
+}
+
+.mx-card {
+  padding: 1.05rem 1.1rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 14px;
+  background: var(--md-code-bg-color);
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.mx-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--md-accent-fg-color);
+}
+
+.mx-card h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.98rem;
+}
+
+.mx-card p {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.7;
+  color: var(--md-default-fg-color--light);
+}
+
+.mx-card__glyph {
+  display: inline-grid;
+  place-content: center;
+  width: 2rem;
+  height: 2rem;
+  margin-bottom: 0.6rem;
+  border-radius: 10px;
+  background: linear-gradient(120deg, rgba(247, 178, 75, 0.22), rgba(228, 87, 46, 0.22));
+  font-size: 1rem;
+}
+
+/* 管线示意图：一条横向的流水线，用箭头串起来。 */
+.mx-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 1.1rem 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 14px;
+  background: var(--md-code-bg-color);
+}
+
+.mx-flow span {
+  padding: 0.3em 0.7em;
+  border-radius: 8px;
+  background: linear-gradient(120deg, rgba(247, 178, 75, 0.16), rgba(228, 87, 46, 0.16));
+  font-family: var(--mx-mono);
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.mx-flow i {
+  font-style: normal;
+  color: var(--md-default-fg-color--lightest);
+}
+
+.mx-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 1rem 0 1.4rem;
+}
+
+.mx-badge {
+  padding: 0.34em 0.75em;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 999px;
+  background: var(--md-code-bg-color);
+  font-family: var(--mx-mono);
+  font-size: 0.76rem;
+}
+
+.mx-badge--on {
+  border-color: rgba(228, 87, 46, 0.45);
+  background: rgba(228, 87, 46, 0.1);
+}
+
+.mx-badge--soft {
+  border-style: dashed;
+  color: var(--md-default-fg-color--light);
+}
+
+.mx-timeline {
+  position: relative;
+  margin: 1.4rem 0;
+  padding-left: 1.6rem;
+  border-left: 2px solid var(--md-default-fg-color--lightest);
+  list-style: none;
+}
+
+.mx-timeline li {
+  position: relative;
+  margin: 0 0 1rem;
+  padding-left: 0.2rem;
+  font-size: 0.86rem;
+}
+
+.mx-timeline li::before {
+  content: "";
+  position: absolute;
+  left: -2.02rem;
+  top: 0.35rem;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  border: 2px solid var(--md-default-bg-color);
+  background: var(--md-default-fg-color--lightest);
+}
+
+.mx-timeline li.is-done::before {
+  background: linear-gradient(120deg, var(--mx-amber), var(--mx-orange));
+}
+
+.mx-timeline b {
+  font-family: var(--mx-mono);
+  margin-right: 0.5rem;
+}
+
+/* 5 --------------------------------------------------------- 响应式/动效 */
+
+@media screen and (max-width: 60em) {
+  .mx-hero__top {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .mx-console {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mx-viewport {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+@media screen and (max-width: 40em) {
+  .mx-hero__inner {
+    padding: 0 0.6rem;
+  }
+
+  .mx-stage__chrome {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .mx-toggle {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .mx-toggle__btn {
+    flex: 1;
+    text-align: center;
+  }
+
+  .mx-hud--tl {
+    max-width: 70%;
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mx-pulse,
+  .mx-spinner span,
+  .mx-viewport.is-naive.has-frame canvas {
+    animation: none !important;
+  }
+
+  * {
+    scroll-behavior: auto !important;
+  }
+}
