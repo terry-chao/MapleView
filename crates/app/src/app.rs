@@ -55,6 +55,9 @@ const ABOUT_URL: &str = "https://terry-chao.github.io/MapleView/";
 /// Author credited in the About dialog.
 const ABOUT_AUTHOR: &str = "Terry";
 
+/// Author contact address, shown in the About dialog.
+const ABOUT_EMAIL: &str = "terrychao.me@gmail.com";
+
 /// The welcome page's two action buttons, and the gap between them.
 const BUTTON_W: f32 = 124.0;
 const BUTTON_H: f32 = 34.0;
@@ -749,6 +752,10 @@ impl MapleView {
                     .show(ui, |ui| {
                         ui.label(egui::RichText::new("作者").weak());
                         ui.label(ABOUT_AUTHOR);
+                        ui.end_row();
+
+                        ui.label(egui::RichText::new("邮箱").weak());
+                        ui.hyperlink_to(ABOUT_EMAIL, format!("mailto:{ABOUT_EMAIL}"));
                         ui.end_row();
 
                         ui.label(egui::RichText::new("官网").weak());
