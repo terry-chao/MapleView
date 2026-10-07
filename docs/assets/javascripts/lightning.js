@@ -7,7 +7,10 @@
      · 切图用单调递增的版本号做取消        （对应 loader.rs 的原子版本号）
      · 当前图的邻居提前预取进缓存
      · 缓存按「字节」而不是张数计费，超预算 LRU 淘汰（对应 cache.rs）
-     · 先按视口分辨率解一张预览图，放大到 100% 以上再后台补全分辨率
+
+   主图按原尺寸解：createImageBitmap 就算带上 resizeWidth，也一样会把整张 JPEG
+   解一遍再重采样，纯亏。所以这里只演示「预取 + 缓存」换来的等待差距，
+   不假装解码器少干了一半活。
 
    所有毫秒数都是这台机器上的真实测量值，没有任何写死的数字。
    ========================================================================== */
@@ -44,7 +47,6 @@
     avg: $("[data-mv-avg]"),
     bytes: $("[data-mv-bytes]"),
     open: $("[data-mv-open]"),
-    toggles: Array.prototype.slice.call(root.querySelectorAll("[data-mv-mode]")),
     stats: Array.prototype.slice.call(root.querySelectorAll("[data-count]")),
     steps: {}
   };
@@ -73,7 +75,6 @@
   var state = {
     items: [],
     index: -1,
-    mode: "fast",
     seq: 0,
     cache: new Map(),
     cacheBytes: 0,
@@ -519,7 +520,6 @@
   }
 
   function prefetch(center) {
-    if (state.mode === "naive") return;
     var n = state.items.length;
     [1, -1, 2, -2].forEach(function (delta, i) {
       var item = state.items[((center + delta) % n + n) % n];
@@ -545,7 +545,6 @@
     state.index = index;
     state.seq += 1;
     var seq = state.seq;
-    var naive = state.mode === "naive";
 
     updateChrome(item, index);
     highlightThumb();
@@ -553,9 +552,8 @@
     resizeCanvas();
     fitView(item);
     clearPipe();
-    viewport.classList.toggle("is-naive", naive);
 
-    var hit = naive ? null : cacheGet(item, "preview");
+    var hit = cacheGet(item, "preview");
     if (hit) {
       state.hits += 1;
       ui.spinner.hidden = true;
@@ -570,7 +568,7 @@
 
     state.misses += 1;
     ui.spinner.hidden = false;
-    var placeholder = naive ? null : cacheGet(item, "thumb");
+    var placeholder = cacheGet(item, "thumb");
     if (placeholder) {
       setFrame(placeholder, "thumb", false);
       draw();
@@ -578,10 +576,9 @@
       setFrame(null);
       clearCanvas();
     }
-    setBadge(naive ? "每次都要重新解码…" : "正在解码…", "miss");
+    setBadge("正在解码…", "miss");
 
-    // 对比模式没有预取也没有缓存：每翻一页都现场解一次整张图，这就是要等的原因。
-    var kind = naive ? "full" : "preview";
+    var kind = "preview";
     request(item, kind, { priority: 0, seq: seq }).promise.then(function (res) {
       if (!res) return;
       if (res.cancelled || state.seq !== seq) return;
@@ -590,18 +587,14 @@
         setBadge("解码失败：" + (res.error || "未知错误"), "miss");
         return;
       }
-      var entry = naive ? { bitmap: res.bitmap, w: res.width, h: res.height, bytes: res.width * res.height * 4, at: performance.now() } : cachePut(item, kind, res);
+      var entry = cachePut(item, kind, res);
       ui.spinner.hidden = true;
-      setFrame(entry, kind, naive);
+      setFrame(entry, kind, false);
       draw();
       record(performance.now() - started, false);
-      setBadge(
-        "现场解码 " + res.decodeMs.toFixed(1) + " ms · " + res.width + "×" + res.height +
-        (naive ? "，每次翻页都要重来" : "，之后翻回来就不用等了"),
-        "miss"
-      );
+      setBadge("解码 " + res.decodeMs.toFixed(1) + " ms · " + res.width + "×" + res.height, "miss");
       animatePipeline(false, res);
-      if (!naive) prefetch(index);
+      prefetch(index);
     });
   }
 
@@ -854,47 +847,6 @@
       }
     });
   }
-
-  /* ------------------------------------------------------------ 模式切换 -- */
-
-  var PREV_DESIRE = {
-    fast: "枫阅：提前解好，翻页不用等",
-    naive: "其他看图工具：每翻一页都现场解码"
-  };
-
-  function setMode(mode) {
-    if (state.mode === mode) return;
-    state.mode = mode;
-    state.hits = 0;
-    state.misses = 0;
-    state.cancels = 0;
-    state.latencies = [];
-    state.run = { n: 0, sum: 0 };
-    queue.forEach(function (job) { job.cancelled = true; pending.delete(job.key); });
-    queue = [];
-    slots.forEach(function (slot) { if (slot.job) slot.job.cancelled = true; });
-    // 先丢掉对当前帧的引用，再清缓存 —— 否则会留下一个指向已 close 位图的悬空引用。
-    setFrame(null);
-    // 清掉预览/全分辨率缓存（缩略图留着，它属于界面的一部分）。
-    Array.from(state.cache.keys()).forEach(function (key) {
-      if (key.indexOf("|thumb") < 0) dropEntry(key);
-    });
-    ui.toggles.forEach(function (btn) {
-      btn.classList.toggle("is-active", btn.getAttribute("data-mv-mode") === mode);
-    });
-    clearPipe();
-    drawSpark();
-    updateMeters();
-    setBadge(PREV_DESIRE[mode], mode === "naive" ? "miss" : "hit");
-    show(state.index, { force: true });
-  }
-
-  ui.toggles.forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      stopAutoplay();
-      setMode(btn.getAttribute("data-mv-mode"));
-    });
-  });
 
   /* ------------------------------------------------------------ 数字滚动 -- */
 

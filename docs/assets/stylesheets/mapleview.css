@@ -307,38 +307,11 @@ body {
   color: var(--mx-fg);
 }
 
-.mx-toggle {
-  display: flex;
-  gap: 0.2rem;
+.mx-stage__hint {
   margin-left: auto;
-  padding: 0.2rem;
-  border: 1px solid var(--mx-line);
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.28);
   flex: none;
-}
-
-.mx-toggle__btn {
-  border: 0;
-  border-radius: 999px;
-  padding: 0.42em 0.9em;
-  background: transparent;
+  font-size: 0.74rem;
   color: var(--mx-muted);
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.16s ease, color 0.16s ease;
-  white-space: nowrap;
-}
-
-.mx-toggle__btn:hover {
-  color: var(--mx-fg);
-}
-
-.mx-toggle__btn.is-active {
-  background: linear-gradient(120deg, var(--mx-amber), var(--mx-orange));
-  color: #1a0d06;
 }
 
 .mx-viewport {
@@ -373,21 +346,6 @@ body {
 
 .mx-viewport.has-frame canvas {
   opacity: 1;
-}
-
-.mx-viewport.is-naive.has-frame canvas {
-  animation: mx-fade 0.34s ease;
-}
-
-@keyframes mx-fade {
-  from {
-    opacity: 0;
-    filter: blur(6px);
-  }
-  to {
-    opacity: 1;
-    filter: blur(0);
-  }
 }
 
 .mx-viewport__empty {
@@ -920,16 +878,6 @@ body {
     gap: 0.5rem;
   }
 
-  .mx-toggle {
-    margin-left: 0;
-    width: 100%;
-  }
-
-  .mx-toggle__btn {
-    flex: 1;
-    text-align: center;
-  }
-
   .mx-hud--tl {
     max-width: 70%;
   }
@@ -938,8 +886,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .mx-pulse,
-  .mx-spinner span,
-  .mx-viewport.is-naive.has-frame canvas {
+  .mx-spinner span {
     animation: none !important;
   }
 
