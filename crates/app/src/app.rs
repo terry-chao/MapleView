@@ -50,7 +50,7 @@ const PREFETCH_RADIUS: usize = 2;
 const VIEWER_BACKDROP: Color32 = Color32::from_gray(22);
 
 /// Project homepage, shown in the About dialog.
-const ABOUT_URL: &str = "https://terry-chao.github.io/mapleview/";
+const ABOUT_URL: &str = "https://terry-chao.github.io/MapleView/";
 
 /// Author credited in the About dialog.
 const ABOUT_AUTHOR: &str = "Terry";
