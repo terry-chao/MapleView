@@ -10,6 +10,7 @@ members = ["crates/core", "crates/app", "crates/cli"]
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
+authors = ["Terry <terrychao.me@gmail.com>"]
 repository = "https://github.com/terry-chao/MapleView"
 
 [workspace.dependencies]
