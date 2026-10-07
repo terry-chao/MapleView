@@ -479,7 +479,7 @@
   /* ---------------------------------------------------------------- 导航 -- */
 
   function updateChrome(item, index) {
-    ui.path.textContent = item.local ? item.name : "assets/demo/" + item.name;
+    ui.path.textContent = item.name;
     ui.count.textContent = (index + 1) + " / " + state.items.length;
     ui.format.textContent = item.format;
     ui.dims.textContent = item.w + " × " + item.h;
@@ -518,7 +518,7 @@
     });
     if (dropped) {
       state.cancels += dropped;
-      setBadge("取消 " + dropped + " 个过期请求", "cancel");
+      setBadge("跳过了 " + dropped + " 张已经翻过去的图", "cancel");
     }
   }
 
@@ -528,14 +528,14 @@
     if (state.view.scale / deviceScale() < 0.98) return;
     if (cacheGet(item, "full") || pending.has(cacheKey(item, "full"))) return;
     // 放大到 100% 以上才需要全分辨率：后台补一张，几何不变所以画面不会跳。
-    setBadge("后台补全分辨率…", "miss");
+    setBadge("后台补上清晰细节…", "miss");
     request(item, "full", { priority: 1, seq: state.seq }).promise.then(function (res) {
       if (!res || !res.ok || res.cancelled) return;
       var entry = cachePut(item, "full", res);
       if (state.items[state.index] === item) {
         setFrame(entry, "full", false);
         draw();
-        setBadge("全分辨率纹理 " + res.width + "×" + res.height, "hit");
+        setBadge("已切到完整清晰度 " + res.width + "×" + res.height, "hit");
         animatePipeline(false, res);
       }
     });
@@ -585,7 +585,7 @@
       setFrame(hit, "preview", false);
       draw();
       record(performance.now() - started, true);
-      setBadge("缓存命中 · 零解码", "hit");
+      setBadge("秒开 · 直接显示", "hit");
       animatePipeline(true, null);
       prefetch(index);
       ensureFull(item);
@@ -602,9 +602,9 @@
       setFrame(null);
       clearCanvas();
     }
-    setBadge(naive ? "每次都从头解原图…" : "正在解码…", "miss");
+    setBadge(naive ? "每次都要重新解码…" : "正在解码…", "miss");
 
-    // 朴素管线加载的是原图（不缩放），这正是慢的根源。
+    // 对比模式加载的是原图（不缩放），这正是慢的根源。
     var kind = naive ? "full" : "preview";
     request(item, kind, { priority: 0, seq: seq }).promise.then(function (res) {
       if (!res) return;
@@ -619,7 +619,7 @@
       setFrame(entry, kind, naive);
       draw();
       record(performance.now() - started, false);
-      setBadge((naive ? "解了整张原图 " : "现解码 ") + res.decodeMs.toFixed(1) + " ms · " + res.width + "×" + res.height, "miss");
+      setBadge((naive ? "整张重新解了一遍 " : "解码 ") + res.decodeMs.toFixed(1) + " ms · " + res.width + "×" + res.height, "miss");
       animatePipeline(false, res);
       if (!naive) { prefetch(index); ensureFull(item); }
     });
@@ -828,7 +828,7 @@
       setBadge("没找到可识别的图片文件", "cancel");
       return Promise.resolve();
     }
-    setBadge("正在读取文件头…", "miss");
+    setBadge("正在识别图片…", "miss");
     return Promise.all(added.map(probe)).then(function () {
       var ready = added.filter(function (it) { return it.w && it.h; });
       ready.forEach(loadThumb);
@@ -880,8 +880,8 @@
   /* ------------------------------------------------------------ 模式切换 -- */
 
   var PREV_DESIRE = {
-    fast: "闪电管线：预取 + 字节预算缓存",
-    naive: "朴素管线：无预取、无缓存、每次都解原图"
+    fast: "枫阅：邻居预取 + 缓存",
+    naive: "其他看图工具：每次都重新解码"
   };
 
   function setMode(mode) {
@@ -955,7 +955,7 @@
       step += 1;
       if (step >= stops) {
         stopAutoplay();
-        setBadge("缓存已热 · 现在随便翻", "hit");
+        setBadge("已经准备就绪 · 现在随便翻", "hit");
         return;
       }
       show(state.index + 1);
@@ -1007,7 +1007,7 @@
   updateMeters();
   drawSpark();
 
-  // 先把缩略图条铺出来（相当于 M2 的缩略图条），再放第一张主图。
+  // 先把缩略图条铺出来，再放第一张主图。
   Promise.all(state.items.map(loadThumb)).then(function () {
     if (!state.items.length) {
       ui.empty.textContent = "没有可用的演示图片。";

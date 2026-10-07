@@ -280,53 +280,23 @@ body {
   backdrop-filter: blur(6px);
 }
 
-.mx-stage__chrome {
+/* 演示台顶栏：一行文件信息 + 速度对比按钮。刻意不做成窗口标题栏的样子。 */
+.mx-stage__bar {
   display: flex;
   align-items: center;
-  gap: 0.9rem;
+  gap: 0.7rem;
   padding: 0.7rem 0.9rem;
   border-bottom: 1px solid var(--mx-line);
 }
 
-.mx-stage__dots {
-  display: flex;
-  gap: 0.4rem;
-  flex: none;
-}
-
-.mx-stage__dots i {
-  width: 0.62rem;
-  height: 0.62rem;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.16);
-}
-
-.mx-stage__dots i:first-child {
-  background: rgba(228, 87, 46, 0.75);
-}
-
-.mx-stage__dots i:nth-child(2) {
-  background: rgba(247, 178, 75, 0.75);
-}
-
-.mx-stage__dots i:last-child {
-  background: rgba(120, 200, 140, 0.7);
-}
-
 .mx-stage__file {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  min-width: 0;
-  font-family: var(--mx-mono);
-  font-size: 0.76rem;
-  color: var(--mx-muted);
-}
-
-.mx-stage__path {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--mx-fg);
 }
 
 .mx-stage__count {
@@ -902,40 +872,16 @@ body {
   color: var(--md-default-fg-color--light);
 }
 
-.mx-timeline {
-  position: relative;
-  margin: 1.4rem 0;
-  padding-left: 1.6rem;
-  border-left: 2px solid var(--md-default-fg-color--lightest);
-  list-style: none;
+/* 首页底部那句图片来源的脚注，比正文轻、比 .mx-note 松。 */
+.mx-credit {
+  margin: 1.2rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  color: var(--md-default-fg-color--light);
 }
 
-.mx-timeline li {
-  position: relative;
-  margin: 0 0 1rem;
-  padding-left: 0.2rem;
-  font-size: 0.86rem;
-}
-
-.mx-timeline li::before {
-  content: "";
-  position: absolute;
-  left: -2.02rem;
-  top: 0.35rem;
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 50%;
-  border: 2px solid var(--md-default-bg-color);
-  background: var(--md-default-fg-color--lightest);
-}
-
-.mx-timeline li.is-done::before {
-  background: linear-gradient(120deg, var(--mx-amber), var(--mx-orange));
-}
-
-.mx-timeline b {
-  font-family: var(--mx-mono);
-  margin-right: 0.5rem;
+.mx-credit a {
+  color: var(--mx-amber);
 }
 
 /* 5 --------------------------------------------------------- 响应式/动效 */
@@ -960,7 +906,7 @@ body {
     padding: 0 0.6rem;
   }
 
-  .mx-stage__chrome {
+  .mx-stage__bar {
     flex-wrap: wrap;
     gap: 0.5rem;
   }

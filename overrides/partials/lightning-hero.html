@@ -15,12 +15,11 @@
   <div class="mx-hero__inner">
     <div class="mx-hero__top">
       <div class="mx-hero__copy">
-        <p class="mx-eyebrow"><span class="mx-pulse"></span> Rust · wgpu · MIT · 开源</p>
+        <p class="mx-eyebrow"><span class="mx-pulse"></span> 免费开源 · 本地运行 · 照片不出本机</p>
         <h1 class="mx-title">快如闪电的<br><em>图片预览</em></h1>
         <p class="mx-lede">
-          枫阅是为「翻相册」这件事写的桌面图片查看器：后台多线程解码、
-          相邻图片提前预取、按字节预算的缓存。你按下方向键的那一帧，
-          下一张图已经在显存里等着了。
+          枫阅是为「翻相册」这件事写的桌面图片查看器：翻页时相邻的图片会提前准备好、
+          留在缓存里，所以你按下方向键的那一帧，下一张图已经等在那儿了。
         </p>
         <div class="mx-cta">
           <a class="mx-btn mx-btn--primary" href="#lightning-preview">立即试一下 <span aria-hidden="true">↓</span></a>
@@ -35,29 +34,26 @@
         </div>
         <div class="mx-stat">
           <dt data-count="410" data-suffix=" MP/s">410 MP/s</dt>
-          <dd>6 MP JPEG 解码吞吐</dd>
+          <dd>600 万像素照片解码速度</dd>
         </div>
         <div class="mx-stat">
           <dt data-count="20" data-suffix="+">20+</dt>
-          <dd>内置可解码格式</dd>
+          <dd>能直接打开的图片格式</dd>
         </div>
         <div class="mx-stat">
           <dt data-count="1" data-suffix=" GiB">1 GiB</dt>
-          <dd>字节预算解码缓存</dd>
+          <dd>图片缓存上限</dd>
         </div>
       </dl>
     </div>
 
     <div class="mx-stage">
-      <div class="mx-stage__chrome">
-        <div class="mx-stage__dots" aria-hidden="true"><i></i><i></i><i></i></div>
-        <div class="mx-stage__file">
-          <span class="mx-stage__path" data-mv-path>assets/demo</span>
-          <span class="mx-stage__count" data-mv-count>-- / --</span>
-        </div>
-        <div class="mx-toggle" role="group" aria-label="切换解码管线">
-          <button type="button" class="mx-toggle__btn is-active" data-mv-mode="fast">⚡ 闪电管线</button>
-          <button type="button" class="mx-toggle__btn" data-mv-mode="naive">🐌 朴素管线</button>
+      <div class="mx-stage__bar">
+        <span class="mx-stage__file" data-mv-path>演示图集</span>
+        <span class="mx-stage__count" data-mv-count>-- / --</span>
+        <div class="mx-toggle" role="group" aria-label="对比加载速度">
+          <button type="button" class="mx-toggle__btn is-active" data-mv-mode="fast">⚡ 枫阅</button>
+          <button type="button" class="mx-toggle__btn" data-mv-mode="naive">🐌 其他看图工具</button>
         </div>
       </div>
 
@@ -106,14 +102,14 @@
 
       <div class="mx-console">
         <div class="mx-spark">
-          <span class="mx-spark__label">最近 48 次切换延迟</span>
+          <span class="mx-spark__label">最近 48 次翻页耗时</span>
           <canvas data-mv-spark></canvas>
         </div>
         <div class="mx-meters">
-          <div class="mx-meter"><span class="mx-meter__k">缓存命中</span><span class="mx-meter__v" data-mv-hits>0</span></div>
-          <div class="mx-meter"><span class="mx-meter__k">未命中</span><span class="mx-meter__v" data-mv-misses>0</span></div>
-          <div class="mx-meter"><span class="mx-meter__k">平均延迟</span><span class="mx-meter__v" data-mv-avg>--</span></div>
-          <div class="mx-meter"><span class="mx-meter__k">缓存占用</span><span class="mx-meter__v" data-mv-bytes>0 B</span></div>
+          <div class="mx-meter"><span class="mx-meter__k">秒开</span><span class="mx-meter__v" data-mv-hits>0</span></div>
+          <div class="mx-meter"><span class="mx-meter__k">需要解码</span><span class="mx-meter__v" data-mv-misses>0</span></div>
+          <div class="mx-meter"><span class="mx-meter__k">平均耗时</span><span class="mx-meter__v" data-mv-avg>--</span></div>
+          <div class="mx-meter"><span class="mx-meter__k">占用内存</span><span class="mx-meter__v" data-mv-bytes>0 B</span></div>
         </div>
       </div>
 
@@ -127,10 +123,8 @@
           <label class="mx-link">打开我的照片<input type="file" accept="image/*" multiple hidden data-mv-open></label>
         </p>
         <p class="mx-note">
-          演示台里跑的是<strong>真实解码</strong>：图片由 Web Worker 用
-          <code>createImageBitmap</code> 解出，毫秒数是这台机器上的实测值。
-          桌面端用同一套预取 + 字节预算缓存策略，
-          6 MP JPEG 全分辨率解码约 14.6 ms、约 410 MP/s。
+          演示台里跑的是<strong>真实解码</strong>，毫秒数就是这台机器上的实测值，
+          不是提前算好的动画。点上面的「其他看图工具」再翻一次，对比最明显。
         </p>
       </div>
     </div>
