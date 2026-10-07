@@ -499,6 +499,15 @@ body {
   font-family: var(--mx-mono);
 }
 
+.mx-latency__label {
+  align-self: center;
+  margin-right: 0.35em;
+  font-size: 0.7rem;
+  font-family: inherit;
+  color: var(--mx-muted);
+  letter-spacing: 0.04em;
+}
+
 .mx-latency__value {
   font-size: 1.5rem;
   font-weight: 700;

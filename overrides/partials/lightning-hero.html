@@ -71,6 +71,7 @@
 
         <div class="mx-hud mx-hud--tr">
           <div class="mx-latency" data-mv-latency>
+            <span class="mx-latency__label">翻页等待</span>
             <span class="mx-latency__value" data-mv-latency-value>--</span>
             <span class="mx-latency__unit">ms</span>
           </div>
@@ -83,7 +84,6 @@
             <span class="mx-pipe__step" data-mv-step="probe">探测</span>
             <span class="mx-pipe__step" data-mv-step="decode">解码</span>
             <span class="mx-pipe__step" data-mv-step="exif">EXIF</span>
-            <span class="mx-pipe__step" data-mv-step="resize">缩放</span>
             <span class="mx-pipe__step" data-mv-step="present">上屏</span>
           </div>
         </div>
@@ -123,8 +123,8 @@
           <label class="mx-link">打开我的照片<input type="file" accept="image/*" multiple hidden data-mv-open></label>
         </p>
         <p class="mx-note">
-          演示台里跑的是<strong>真实解码</strong>，毫秒数就是这台机器上的实测值，
-          不是提前算好的动画。点上面的「其他看图工具」再翻一次，对比最明显。
+          演示台里跑的是<strong>真实解码</strong>：右上角那个数字就是这一次翻页你
+          实际等了多久，不是提前算好的动画。切到「其他看图工具」再翻一次，差别最明显。
         </p>
       </div>
     </div>

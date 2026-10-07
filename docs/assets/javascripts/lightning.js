@@ -65,7 +65,9 @@
 
   var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   var BASE = new URL("assets/demo/", document.baseURI).href;
-  var CACHE_BUDGET = 192 * 1024 * 1024;
+  // 主图按原尺寸缓存，一张 2560×1707 的位图就占 17 MB，所以预算给得比「按张数」
+  // 时代宽一些：整个演示图集加起来也才 ~220 MB，翻回任何一张都还是命中。
+  var CACHE_BUDGET = 320 * 1024 * 1024;
   var HISTORY = 48;
 
   var state = {
@@ -246,23 +248,18 @@
   /* ------------------------------------------------------------ 目标尺寸 -- */
 
   function targetFor(item, kind) {
-    if (kind === "full" || kind === "probe") return null;
+    // 只有缩略图条值得让浏览器顺手缩小 —— 那是为了省内存，而且不在翻页的关键路径上。
+    //
+    // 主图不缩：createImageBitmap 无论如何都会把整张 JPEG 解出来，resizeWidth 只是
+    // 在解完之后多一次重采样。实测同一张 2560px 的图，解到 1018px 反而比原尺寸慢
+    // （44ms → 55ms），6000px 的图更明显（184ms → 228ms）。所以这里解原图、
+    // 原样缓存，把「更快」交给预取和缓存去兑现，而不是假装解码器少干了一半活。
+    if (kind !== "thumb") return null;
     var natW = item.w || 0;
     var natH = item.h || 0;
     if (!natW || !natH) return null;
-    if (kind === "thumb") {
-      var tw = Math.min(320, natW);
-      return { w: tw, h: Math.max(1, Math.round((tw / natW) * natH)), quality: "low" };
-    }
-    // 预览图：按视口分辨率解码，再留一点余量给轻微放大就够。
-    var dpr = deviceScale();
-    var boxW = viewport.clientWidth || 960;
-    var boxH = viewport.clientHeight || 540;
-    var k = Math.min(boxW / natW, boxH / natH) * dpr * 1.1;
-    var pw = Math.round(natW * k);
-    var ph = Math.round(natH * k);
-    if (pw >= natW || ph >= natH) return null; // 原图本来就没比预览大，直接解原图
-    return { w: pw, h: ph, quality: "high" };
+    var tw = Math.min(320, natW);
+    return { w: tw, h: Math.max(1, Math.round((tw / natW) * natH)), quality: "low" };
   }
 
   /* ---------------------------------------------------------------- 缓存 -- */
@@ -455,13 +452,12 @@
 
   function animatePipeline(hit, res) {
     clearPipe();
-    var order = ["read", "probe", "decode", "exif", "resize", "present"];
+    var order = ["read", "probe", "decode", "exif", "present"];
     var timings = {
       read: res ? res.fetchMs : 0,
       probe: res ? res.probeMs : 0,
       decode: res ? res.decodeMs : 0,
       exif: 0,
-      resize: 0,
       present: 0
     };
     Object.keys(timings).forEach(function (k) {
@@ -522,25 +518,6 @@
     }
   }
 
-  function ensureFull(item) {
-    if (state.mode === "naive") return;
-    if (!item || item.w * item.h < 1) return;
-    if (state.view.scale / deviceScale() < 0.98) return;
-    if (cacheGet(item, "full") || pending.has(cacheKey(item, "full"))) return;
-    // 放大到 100% 以上才需要全分辨率：后台补一张，几何不变所以画面不会跳。
-    setBadge("后台补上清晰细节…", "miss");
-    request(item, "full", { priority: 1, seq: state.seq }).promise.then(function (res) {
-      if (!res || !res.ok || res.cancelled) return;
-      var entry = cachePut(item, "full", res);
-      if (state.items[state.index] === item) {
-        setFrame(entry, "full", false);
-        draw();
-        setBadge("已切到完整清晰度 " + res.width + "×" + res.height, "hit");
-        animatePipeline(false, res);
-      }
-    });
-  }
-
   function prefetch(center) {
     if (state.mode === "naive") return;
     var n = state.items.length;
@@ -585,10 +562,9 @@
       setFrame(hit, "preview", false);
       draw();
       record(performance.now() - started, true);
-      setBadge("秒开 · 直接显示", "hit");
+      setBadge("秒开 · 早就解好了", "hit");
       animatePipeline(true, null);
       prefetch(index);
-      ensureFull(item);
       return;
     }
 
@@ -604,7 +580,7 @@
     }
     setBadge(naive ? "每次都要重新解码…" : "正在解码…", "miss");
 
-    // 对比模式加载的是原图（不缩放），这正是慢的根源。
+    // 对比模式没有预取也没有缓存：每翻一页都现场解一次整张图，这就是要等的原因。
     var kind = naive ? "full" : "preview";
     request(item, kind, { priority: 0, seq: seq }).promise.then(function (res) {
       if (!res) return;
@@ -619,9 +595,13 @@
       setFrame(entry, kind, naive);
       draw();
       record(performance.now() - started, false);
-      setBadge((naive ? "整张重新解了一遍 " : "解码 ") + res.decodeMs.toFixed(1) + " ms · " + res.width + "×" + res.height, "miss");
+      setBadge(
+        "现场解码 " + res.decodeMs.toFixed(1) + " ms · " + res.width + "×" + res.height +
+        (naive ? "，每次翻页都要重来" : "，之后翻回来就不用等了"),
+        "miss"
+      );
       animatePipeline(false, res);
-      if (!naive) { prefetch(index); ensureFull(item); }
+      if (!naive) prefetch(index);
     });
   }
 
@@ -649,7 +629,6 @@
     state.view.scale = nextScale;
     state.view.mode = "free";
     draw();
-    ensureFull(item);
   }
 
   viewport.addEventListener("wheel", function (ev) {
@@ -708,7 +687,6 @@
       state.view.tx = (canvas.width - item.w * state.view.scale) / 2;
       state.view.ty = (canvas.height - item.h * state.view.scale) / 2;
       state.view.mode = "free";
-      ensureFull(item);
     }
     draw();
   }
@@ -880,8 +858,8 @@
   /* ------------------------------------------------------------ 模式切换 -- */
 
   var PREV_DESIRE = {
-    fast: "枫阅：邻居预取 + 缓存",
-    naive: "其他看图工具：每次都重新解码"
+    fast: "枫阅：提前解好，翻页不用等",
+    naive: "其他看图工具：每翻一页都现场解码"
   };
 
   function setMode(mode) {
